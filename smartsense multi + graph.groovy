@@ -9,7 +9,11 @@ metadata {
 		capability "Sensor"
 		capability "Battery"
 	}
-
+    
+    preferences {
+    input("TempAdjust", "BigDecimal", title: "Temp Adjust", description: "Adjust your temp reading +/-")
+	}
+    
 	simulator {
 		status "open": "zone report :: type: 19 value: 0031"
 		status "closed": "zone report :: type: 19 value: 0030"
@@ -20,12 +24,16 @@ metadata {
 		for (int i = 10; i <= 50; i += 10) {
 			status "temp ${i}C": "contactState: 0, accelerationState: 0, temp: $i C, battery: 100, rssi: 100, lqi: 255"
 		}
+        
+        status "temp 72F": "contactSate: 0, accelerationState: 0, temp: 72 F, battery: 100, rssi: 100, lqi:255"
 
 		// kinda hacky because it depends on how it is installed
 		status "x,y,z: 0,0,0": "x: 0, y: 0, z: 0, rssi: 100, lqi: 255"
 		status "x,y,z: 1000,0,0": "x: 1000, y: 0, z: 0, rssi: 100, lqi: 255"
 		status "x,y,z: 0,1000,0": "x: 0, y: 1000, z: 0, rssi: 100, lqi: 255"
 		status "x,y,z: 0,0,1000": "x: 0, y: 0, z: 1000, rssi: 100, lqi: 255"
+        
+        
 	}
 
 	tiles {
@@ -50,7 +58,7 @@ metadata {
 				]
 			)
 		}
-		chartTile(name: "temperatureChart", attribute: "device.temperature")
+		chartTile(name: "temperatureChart", attribute: "device.temperature")        
 		valueTile("3axis", "device.threeAxis", decoration: "flat", wordWrap: false) {
 			state("threeAxis", label:'${currentValue}', unit:"", backgroundColor:"#ffffff")
 		}
@@ -69,7 +77,7 @@ metadata {
 		*/
 
 		main(["contact", "acceleration", "temperature"])
-		details(["contact", "acceleration", "temperature", "temperatureChart", "3axis", "battery"/*, "lqi"*/])
+		details(["contact", "acceleration", "temperature", "3axis", "battery", /*"lqi",*/  "temperatureChart"])
 	}
 }
 
@@ -304,6 +312,8 @@ private getTempResult(part, description) {
 	def name = "temperature"
 	def temperatureScale = getTemperatureScale()
 	def value = zigbee.parseSmartThingsTemperatureValue(part, "temp: ", temperatureScale)
+    value = (value.toInteger() + TempAdjust.toInteger()).toString() // PS changed to +/- temp adjustment
+    log.debug value
 	def linkText = getLinkText(device)
 	def descriptionText = "$linkText was $value°$temperatureScale"
 	def isStateChange = isTemperatureStateChange(device, name, value)
