@@ -1,0 +1,145 @@
+/**
+ *  Control4 Send Command Test
+ *
+ *  Copyright 2014 Patrick Stuart
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ *  in compliance with the License. You may obtain a copy of the License at:
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
+ *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+ *  for the specific language governing permissions and limitations under the License.
+ *
+ */
+definition(
+    name: "Control4 Send Command Test",
+    namespace: "",
+    author: "Patrick Stuart",
+    description: "Testing sending a http request to Control4 controller",
+    category: "My Apps",
+    iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
+    iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png"
+)
+
+
+preferences {
+	section("When the door opens/closes...") {
+		input "contact1", "capability.contactSensor"
+	}
+    section("When I touch the app, Send to server...") {
+		input "server", "text", title: "Server IP", description: "Your HTTP Server IP", required: true
+		input "command", "text", title: "Parameters", description: "Command to Send", required: true
+	}
+}
+
+def installed() {
+	log.debug "Installed with settings: ${settings}"
+	subscribe(contact1.contact)
+    subscribe(app, appTouch)
+	initialize()
+}
+
+def updated() {
+	log.debug "Updated with settings: ${settings}"
+	unsubscribe()
+    subscribe(contact1.contact)
+    subscribe(app, appTouch)
+	initialize()
+}
+
+def initialize() {
+subscribe(location, null, locationHandler, [filterEvents:false])
+	// TODO: subscribe to attributes, devices, locations, etc.
+}
+
+// TODO: implement event handlers
+
+    
+def appTouch(evt) {
+	log.debug "appTouch: $evt"
+	sendHttp()
+    //sendSoap()
+}
+
+//def contact(evt)
+//{
+//def params = [
+ //       uri: 'https://192.168.101.165:8080/Test',
+ //       body: [param1: myParam1, param2: myParam2]
+ //   ]
+    
+ //   log.debug "Params -> $params"
+ //   	httpPost(params) {
+ //       response ->
+ //       	log.debug "Response Received: Status [$response.status]"           
+//	}
+//}
+
+def sendSoap() {
+
+def ip = "${settings.server}:5020"
+def deviceNetworkId = "C0A865A5:139C"
+def cmdc4 = '''<c4soap name="GetVersionInfo" async="False" />'''
+log.debug("c4 command:" + cmdc4)
+sendHubCommand(new physicalgraph.device.HubAction("""GET """ + cmdc4 + """HTTP/1.1\r\nHOST: $ip\r\n\r\n""", physicalgraph.device.Protocol.LAN, "${deviceNetworkId}"))
+
+log.debug("sent test command")
+log.debug location.hubs*.firmwareVersionString.findAll { it }
+
+}
+
+
+
+
+
+def sendHttp() {
+def ip = "${settings.server}:8080"
+def deviceNetworkId = "C0A865A5"
+
+sendHubCommand(new physicalgraph.device.HubAction("""GET /${settings.command} HTTP/1.1\r\nHOST: $ip\r\n\r\n""", physicalgraph.device.Protocol.LAN, "${deviceNetworkId}"))
+
+log.debug("sent test command")
+log.debug location.hubs*.firmwareVersionString.findAll { it }
+}
+
+
+def locationHandler(evt) {
+	def description = evt.description
+	def hub = evt?.hubId
+    
+	log.debug "cp desc: " + description
+	//log.debug description
+    //def headerString = new String(description.decodeBase64())	
+    
+    //log.debug("Count" + description.count(","))
+    if (description.count(",") > 4)
+    {
+def bodyString = new String(description.split(',')[5].split(":")[1].decodeBase64())
+log.debug(bodyString)
+}
+
+    
+}
+
+private Long converIntToLong(ipAddress) {
+	log.debug(ipAddress)
+	long result = 0;;
+	def parts = ipAddress.split("\\.")
+    for (int i = 3; i >= 0; i--) {
+        result |= (Long.parseLong(parts[3 - i]) << (i * 8));
+    }
+
+    return result & 0xFFFFFFFF;
+}
+
+private String convertIPToHex(ipAddress) {
+	return Long.toHexString(converIntToLong(ipAddress));
+}
+
+private String getDeviceId() {
+	def ip = convertIPToHex(settings.server)
+	def port = Long.toHexString(Long.parseLong(settings.port))
+	return ip + ":0x" + port
+}
