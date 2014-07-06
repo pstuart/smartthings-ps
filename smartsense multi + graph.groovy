@@ -11,7 +11,7 @@ metadata {
 	}
     
     preferences {
-    input("TempAdjust", "BigDecimal", title: "Temp Adjust", description: "Adjust your temp reading +/-")
+    input("TempAdjust", "Double", title: "Temp Adjust", description: "Adjust your temp reading +/-")
 	}
     
 	simulator {
@@ -82,6 +82,7 @@ metadata {
 }
 
 def parse(String description) {
+	log.debug "Parse got this info: $description"
 	def results
 
 	if (!isSupportedDescription(description) || zigbee.isZoneType19(description)) {
@@ -311,8 +312,13 @@ private getAccelerationResult(part, description) {
 private getTempResult(part, description) {
 	def name = "temperature"
 	def temperatureScale = getTemperatureScale()
-	def value = zigbee.parseSmartThingsTemperatureValue(part, "temp: ", temperatureScale)
-    value = (value.toInteger() + TempAdjust.toInteger()).toString() // PS changed to +/- temp adjustment
+    // temp is mV get celcuis is mv / 10 then convert to F
+	//def value = zigbee.parseSmartThingsTemperatureValue(part, "temp: ", temperatureScale)
+    def value = part.split(":")[1].toDouble() / 10 // Celcius
+    if (temperatureScale == "F")
+    { value = value * 1.8 + 32 }
+    log.debug TempAdjust
+    value = (value.toDouble() + TempAdjust.toDouble()).round().toString() // PS changed to +/- temp adjustment
     log.debug value
 	def linkText = getLinkText(device)
 	def descriptionText = "$linkText was $value°$temperatureScale"
