@@ -46,7 +46,7 @@ metadata {
 			state("inactive", label:'${name}', icon:"st.motion.acceleration.inactive", backgroundColor:"#ffffff")
 		}
 		valueTile("temperature", "device.temperature") {
-			state("temperature", label:'${currentValue}°',
+			state("temperature", label:'${currentValue}Â°',
 				backgroundColors:[
 					[value: 31, color: "#153591"],
 					[value: 44, color: "#1e9cbb"],
@@ -321,7 +321,7 @@ private getTempResult(part, description) {
     value = (value.toDouble() + TempAdjust.toDouble()).round().toString() // PS changed to +/- temp adjustment
     log.debug value
 	def linkText = getLinkText(device)
-	def descriptionText = "$linkText was $value°$temperatureScale"
+	def descriptionText = "$linkText was $valueÂ°$temperatureScale"
 	def isStateChange = isTemperatureStateChange(device, name, value)
 	
 	storeData("temperature", value)
