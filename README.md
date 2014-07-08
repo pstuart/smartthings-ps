@@ -44,12 +44,19 @@ look for a preferences section with a (edit) link.
 Click the edit link, add the properties for the camera: (these are one of my camera's settings, replace with your values)
 
 Camera IP Address: 192.168.101.249
+
 Camera Port: 80
+
 Camera Path to Image: /SnapshotJPEG?Resolution=640x480&Quality=Clarity
+
 Does Camera require User Auth?: true
+
 Does Camera use a Post or Get, normally Get?: GET
+
 Camera User: username
+
 Camera Password: password
+
 
 click save.
 
