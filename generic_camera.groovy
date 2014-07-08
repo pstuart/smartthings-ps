@@ -18,6 +18,7 @@ metadata {
 		capability "Image Capture"
 		capability "Sensor"
 		capability "Actuator"
+        
 	}
 
     preferences {
@@ -48,14 +49,13 @@ metadata {
 		}
 
 		main "camera"
-		details(["cameraDetails", "take"])
+		details(["cameraDetails", "take", "error"])
 	}
 }
 
 // parse events into attributes
 def parse(String description) {
 	log.debug "Parsing '${description}'"
-
 	def map = stringToMap(description)
 
 	def result = []
@@ -133,7 +133,7 @@ def take() {
     
     def headers = [:] //"HOST:" + getHostAddress() + ""
     headers.put("HOST", getHostAddress())
-   	if (CameraAuth)
+   	if (CameraAuth == "true")
     	{
      	//headers = "HOST:" + getHostAddress() + ", Authorization:$userpass"
         headers.put("Authorization", userpass)
@@ -142,13 +142,22 @@ def take() {
     log.debug "The Header is $headers"
     
     def method = "GET"
-    if (CameraPostGet.toUpperCase() == "POST")
-    	{
-        method = "POST"
+    try {
+    	if (CameraPostGet.toUpperCase() == "POST")
+    		{
+        	method = "POST"
+        	}
         }
+    catch (Exception e) // HACK to get around default values not setting in devices
+    {
+    	settings.CameraPostGet = "GET"
+        log.debug e
+        log.debug "You must not of set the perference for the CameraPOSTGET option"
+    }
     
     log.debug "The method is $method"
     
+    try {
     def hubAction = new physicalgraph.device.HubAction(
     	method: method,
     	path: path,
@@ -157,8 +166,13 @@ def take() {
         
 	hubAction.options = [outputMsgToS3:true]
     hubAction
+    }
+    catch (Exception e) 
+    {
+    log.debug "Hit Exception on $hubAction"
+    log.debug e
+    }
     
-    //log.debug hubAction
     }
 
 
