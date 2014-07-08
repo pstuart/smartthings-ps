@@ -119,7 +119,8 @@ def take() {
     def host = CameraIP 
     def hosthex = convertIPToHex(host)
     def porthex = Long.toHexString(Long.parseLong((CameraPort)))
-    porthex = "00" + porthex
+    if (porthex.length() < 4) { porthex = "00" + porthex }
+    
     //log.debug "Port in Hex is $porthex"
     //log.debug "Hosthex is : $hosthex"
     device.deviceNetworkId = "$hosthex:$porthex" 
