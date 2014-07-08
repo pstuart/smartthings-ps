@@ -25,6 +25,7 @@ metadata {
     input("CameraPort", "string", title:"Camera Port", description: "Please enter your camera's Port", defaultValue: 80 , required: true, displayDuringSetup: true)
     input("CameraPath", "string", title:"Camera Path to Image", description: "Please enter the path to the image", defaultValue: "/SnapshotJPEG?Resolution=640x480&Quality=Clarity", required: true, displayDuringSetup: true)
     input("CameraAuth", "bool", title:"Does Camera require User Auth?", description: "Please choose if the camera requires authentication (only basic is supported)", defaultValue: true, displayDuringSetup: true)
+    input("CameraPostGet", "string", title:"Does Camera use a Post or Get, normally Get?", description: "Please choose if the camera uses a POST or a GET command to retreive the image", defaultValue: "GET", displayDuringSetup: true)
     input("CameraUser", "string", title:"Camera User", description: "Please enter your camera's username", required: false, displayDuringSetup: true)
     input("CameraPassword", "string", title:"Camera Password", description: "Please enter your camera's password", required: false, displayDuringSetup: true)
 	}
@@ -128,30 +129,35 @@ def take() {
     def path = CameraPath //"/SnapshotJPEG?Resolution=640x480&Quality=Clarity"
     log.debug "path is: $path"
     log.debug "Requires Auth: $CameraAuth"
+    log.debug "Uses which method: $CameraPostGet"
     
-    
+    def headers = [:] //"HOST:" + getHostAddress() + ""
+    headers.put("HOST", getHostAddress())
    	if (CameraAuth)
-    {
-    	def hubAction = new physicalgraph.device.HubAction(
-        method: "GET",
-        path: path,
-        headers: [HOST:getHostAddress(), Authorization:userpass]
+    	{
+     	//headers = "HOST:" + getHostAddress() + ", Authorization:$userpass"
+        headers.put("Authorization", userpass)
+    	}
+    
+    log.debug "The Header is $headers"
+    
+    def method = "GET"
+    if (CameraPostGet.toUpperCase() == "POST")
+    	{
+        method = "POST"
+        }
+    
+    log.debug "The method is $method"
+    
+    def hubAction = new physicalgraph.device.HubAction(
+    	method: method,
+    	path: path,
+    	headers: headers
         )
         
 	hubAction.options = [outputMsgToS3:true]
     hubAction
-	}
-    else
-    {
-    	def hubAction = new physicalgraph.device.HubAction(
-        method: "GET",
-        path: path,
-        headers: [HOST:getHostAddress()]
-        )
-        
-	hubAction.options = [outputMsgToS3:true]
-    hubAction
-    }
+    
     //log.debug hubAction
     }
 
