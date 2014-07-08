@@ -133,7 +133,7 @@ def take() {
     log.debug "Uses which method: $CameraPostGet"
     
     def headers = [:] //"HOST:" + getHostAddress() + ""
-    headers.put("HOST", getHostAddress())
+    headers.put("HOST", "$host:$CameraPort")
    	if (CameraAuth == "true")
     	{
      	//headers = "HOST:" + getHostAddress() + ", Authorization:$userpass"
@@ -201,6 +201,7 @@ private Integer convertHexToInt(hex) {
 	Integer.parseInt(hex,16)
 }
 private String convertHexToIP(hex) {
+log.debug("Convert hex to ip: $hex") //	a0 00 01 6
 	[convertHexToInt(hex[0..1]),convertHexToInt(hex[2..3]),convertHexToInt(hex[4..5]),convertHexToInt(hex[6..7])].join(".")
 }
 
