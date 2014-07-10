@@ -59,6 +59,7 @@ def updated() {
 
 def initialize() {
     subscribe(motion1, "motion.active", motionHandler)
+    subscribe(location, modeChangeHandler)
 	unschedule(changeModeHome)
     unschedule(changeModeAway)
 	   
@@ -67,7 +68,17 @@ def initialize() {
 	
 }
 
-
+def modeChangeHandler(evt) {
+	log.debug "event at mode change event is $evt"
+    if (evt.value == "Home") {
+    	log.debug "Mode changed to Home"
+        setHome()
+     }
+     if (evt.value == "Away") {
+    	log.debug "Mode changed to Away"
+        setAway()
+     }
+}
 
 def changeModeHome(evt) {
 	log.debug "change Mode Home Fired"
