@@ -79,6 +79,11 @@ metadata {
         capability "Polling"
         capability "Relative Humidity Measurement"
         capability "Thermostat"
+        capability "Actuator"
+		capability "Sensor"
+        capability "Refresh"
+		capability "Configuration"
+        capability "Location Mode"
 
         attribute "presence", "string"
 
@@ -152,6 +157,7 @@ metadata {
 
 // parse events into attributes
 def parse(String description) {
+	log.debug "Recieved a parse request for: $description"
     
 }
 
@@ -297,10 +303,12 @@ def setThermostatFanMode(mode) {
 }
 
 def away() {
+	log.debug "Away Nest"
     setPresence('away')
 }
 
 def present() {
+	log.debug "Home Nest"
     setPresence('present')
 }
 
@@ -311,6 +319,9 @@ def setPresence(status) {
     }
 }
 
+def refresh() {
+	log.debug "nest refresh"
+}
 
 def poll() {
     log.debug "Executing 'poll'"
@@ -320,7 +331,7 @@ def poll() {
         data.shared = it.data.shared.getAt(settings.serial)
         data.structureId = it.data.link.getAt(settings.serial).structure.tokenize('.')[1]
         data.structure = it.data.structure.getAt(data.structureId)
-                
+        
         data.device.fan_mode = data.device.fan_mode == 'duty-cycle'? 'circulate' : data.device.fan_mode
         data.structure.away = data.structure.away? 'away' : 'present'
                 
@@ -349,6 +360,10 @@ def poll() {
         }
         
         sendEvent(name: 'presence', value: data.structure.away)
+        
+        //ambient_temperature_f?
+        //has_leaf?
+        //name = tstat name
     }
 }
 
@@ -369,6 +384,9 @@ def api(method, args = [], success = {}) {
     
     def request = methods.getAt(method)
     log.debug method
+    //Potentially this is the only spot that triggers from Mode Changes
+    log.debug "Current mode = ${location.mode}"
+    
     log.debug "Logged in"
     log.debug "Arguments to send are : $args"
     doRequest(request.uri, args, request.type, success)
@@ -435,3 +453,12 @@ def cToF(temp) {
 def fToC(temp) {
     return (temp - 32) / 1.8
 }
+
+def configure() {
+	log.debug "Configure() nest hit"
+}
+
+def switchMode() {
+	def currentMode = device.currentState("thermostatMode")?.value
+    log.debug "nest current mode is $currentMode"
+    }
