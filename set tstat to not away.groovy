@@ -14,7 +14,7 @@
  *
  */
 definition(
-    name: "Thermostat Away Mode Reset on Motion",
+    name: "Thermostat Away Mode Reset on Motion and Schedule",
     namespace: "ps",
     author: "patrick@patrickstuart.com",
     description: "Set the Nest thermostat (or any tstat) to home when motion is sensed or door is opened, etc.",
@@ -24,13 +24,26 @@ definition(
 
 
 preferences {
-	section("Settings") {
-    input "tstat1", "capability.thermostat", multiple: true
-	}
+	
+    	section("Thermostats") {
+    		input "tstat1", "capability.thermostat", title: "Which Tstats?", multiple: true
+		}
     
-    section("When there's movement..."){
-		input "motion1", "capability.motionSensor", title: "Where?"
-	}
+        section("When there's movement..."){
+            input "motion1", "capability.motionSensor", title: "Where?", multiple: true, required: false
+        }
+
+		section("Schedule") {
+			input(name: "days", type: "enum", title: "Allow Automatic Away/Not Away On These Days", description: "", 
+            required: false, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
+		
+			input( name: "timeAway", title: "Turn On Away Time?", type: "time", required: false)
+		
+			input( name: "timeHome", title: "Turn Off Away Time?", type: "time", required: false)
+		}
+    		
+
+	
 }
 
 def installed() {
@@ -46,16 +59,57 @@ def updated() {
 
 def initialize() {
     subscribe(motion1, "motion.active", motionHandler)
+	unschedule(changeModeHome)
+    unschedule(changeModeAway)
+	   
+    schedule(timeHome, changeModeHome)
+    schedule(timeAway, changeModeAway)
+	
 }
 
 
-def motionHandler(evt) {
-	log.debug "Motion detected, $evt"
+
+def changeModeHome(evt) {
+	log.debug "change Mode Home Fired"
+	def today = new Date().format("EEEE")
+	//log.debug "today: ${today}, days: ${days}"
     
-    for (t in settings.tstat1) {
+	if (!days || days.contains(today)) {
+    	log.debug "Set to Not Away on $today"
+    	setHome()
+    }
+}
+
+def changeModeAway(evt) {
+	log.debug "change Mode Away Fired"
+	def today = new Date().format("EEEE")
+	if (!days || days.contains(today)) {
+    log.debug "Set to Away on $today"
+    	setAway()
+    }
+}
+
+def motionHandler(evt) {
+	log.debug "Motion detected, $evt Set to Not Away"
+    setHome()
+}
+
+def setHome() {
+	for (t in settings.tstat1) {
     if (tstat1[0].latestValue("presence") == "away") {
     	log.debug "Setting tstat to here"
         t.present()
         }
     }
 }
+
+def setAway() {
+	for (t in settings.tstat1) {
+    if (tstat1[0].latestValue("presence") == "present") {
+    	log.debug "Setting tstat to away"
+        t.away()
+        }
+    }
+}
+
+
