@@ -1,5 +1,5 @@
 /**
- *  Generic Camera Device
+ *  Generic Camera Device v1.0.07102014
  *
  *  Copyright 2014 patrick@patrickstuart.com
  *
@@ -53,38 +53,33 @@ metadata {
 	}
 }
 
-// parse events into attributes
 def parse(String description) {
-	log.debug "Parsing '${description}'"
-	def map = stringToMap(description)
+    log.debug "Parsing '${description}'"
+    def map = stringToMap(description)
 
-	def result = []
+    def result = []
 
-	if (map.bucket && map.key)
-	{ //got a s3 pointer
-		putImageInS3(map)
-	}
-	else if (map.headers && map.body)
-	{ //got device info response
+    if (map.bucket && map.key) { //got a s3 pointer
+    	putImageInS3(map)
+    }
+    else if (map.headers && map.body) { //got device info response
+    	def headerString = new String(map.headers.decodeBase64())
+    	if (headerString.contains("404 Not Found")) {
+    		state.snapshot = "/snapshot.cgi"
+   		}
 
-		def headerString = new String(map.headers.decodeBase64())
-		if (headerString.contains("404 Not Found")) {
-			state.snapshot = "/snapshot.cgi"
-		}
+    	if (map.body) {
+        def bodyString = new String(map.body.decodeBase64())
+        def body = new XmlSlurper().parseText(bodyString)
+        def productName = body?.productName?.text()
+    	if (productName) {
+            log.trace "Product Name: $productName"
+            state.snapshot = ""
+        }
+    }
+    }
 
-		if (map.body) {
-			def bodyString = new String(map.body.decodeBase64())
-			def body = new XmlSlurper().parseText(bodyString)
-			def productName = body?.productName?.text()
-			if (productName)
-			{
-				log.trace "Product Name: $productName"
-				state.snapshot = ""
-			}
-		}
-	}
-
-	result
+    result
 }
 
 def putImageInS3(map) {
@@ -105,52 +100,41 @@ def putImageInS3(map) {
 		log.error e
 	}
 	finally {
-		//explicitly close the stream
 		if (s3ObjectContent) { s3ObjectContent.close() }
 	}
 }
 
 // handle commands
 def take() {
-	//log.debug "Executing 'take'"
-    
-    def userpassascii = "${CameraUser}:${CameraPassword}"
-    def userpass = "Basic " + userpassascii.encodeAsBase64().toString()
+	def userpassascii = "${CameraUser}:${CameraPassword}"
+	def userpass = "Basic " + userpassascii.encodeAsBase64().toString()
     def host = CameraIP 
-    def hosthex = convertIPToHex(host)
-    def porthex = Long.toHexString(Long.parseLong((CameraPort)))
-    if (porthex.length() < 4) { porthex = "00" + porthex }
-    
-    //log.debug "Port in Hex is $porthex"
-    //log.debug "Hosthex is : $hosthex"
+    def hosthex = convertIPtoHex(host)
+    def porthex = convertPortToHex(CameraPort)
     device.deviceNetworkId = "$hosthex:$porthex" 
     
-    //log.debug "The device id configured is: $device.deviceNetworkId"
+    log.debug "The device id configured is: $device.deviceNetworkId"
     
-    def path = CameraPath //"/SnapshotJPEG?Resolution=640x480&Quality=Clarity"
+    def path = CameraPath 
     log.debug "path is: $path"
     log.debug "Requires Auth: $CameraAuth"
     log.debug "Uses which method: $CameraPostGet"
     
-    def headers = [:] //"HOST:" + getHostAddress() + ""
+    def headers = [:] 
     headers.put("HOST", "$host:$CameraPort")
-   	if (CameraAuth == "true")
-    	{
-     	//headers = "HOST:" + getHostAddress() + ", Authorization:$userpass"
+   	if (CameraAuth == "true") {
         headers.put("Authorization", userpass)
-    	}
+    }
     
     log.debug "The Header is $headers"
     
     def method = "GET"
     try {
-    	if (CameraPostGet.toUpperCase() == "POST")
-    		{
+    	if (CameraPostGet.toUpperCase() == "POST") {
         	method = "POST"
         	}
         }
-    catch (Exception e) // HACK to get around default values not setting in devices
-    {
+    catch (Exception e) { // HACK to get around default values not setting in devices
     	settings.CameraPostGet = "GET"
         log.debug e
         log.debug "You must not of set the perference for the CameraPOSTGET option"
@@ -166,15 +150,14 @@ def take() {
         )
         
 	hubAction.options = [outputMsgToS3:true]
+    log.debug hubAction
     hubAction
     }
-    catch (Exception e) 
-    {
-    log.debug "Hit Exception on $hubAction"
-    log.debug e
+    catch (Exception e) {
+    	log.debug "Hit Exception $e on $hubAction"
     }
     
-    }
+}
 
 
 
@@ -183,25 +166,26 @@ private getPictureName() {
 	return device.deviceNetworkId + "_$pictureUuid" + ".jpg"
 }
 
-private Long converIntToLong(ipAddress) {
-	long result = 0
-	def parts = ipAddress.split("\\.")
-    for (int i = 3; i >= 0; i--) {
-        result |= (Long.parseLong(parts[3 - i]) << (i * 8));
-    }
+private String convertIPtoHex(ipAddress) { 
+    String hex = ipAddress.tokenize( '.' ).collect {  String.format( '%02x', it.toInteger() ) }.join()
+    log.debug "IP address entered is $ipAddress and the converted hex code is $hex"
+    return hex
 
-    return result & 0xFFFFFFFF;
 }
 
-private String convertIPToHex(ipAddress) {
-	return Long.toHexString(converIntToLong(ipAddress));
+private String convertPortToHex(port) {
+	String hexport = port.toString().format( '%04x', port.toInteger() )
+    log.debug hexport
+    return hexport
 }
 
 private Integer convertHexToInt(hex) {
 	Integer.parseInt(hex,16)
 }
+
+
 private String convertHexToIP(hex) {
-log.debug("Convert hex to ip: $hex") //	a0 00 01 6
+	log.debug("Convert hex to ip: $hex") 
 	[convertHexToInt(hex[0..1]),convertHexToInt(hex[2..3]),convertHexToInt(hex[4..5]),convertHexToInt(hex[6..7])].join(".")
 }
 
