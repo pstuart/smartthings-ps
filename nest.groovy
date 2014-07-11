@@ -113,11 +113,11 @@ metadata {
             )
         }
         
-        standardTile("TempUp", "device.button") { state "Cool Up", label:'${name}', action:"setTempUp", icon: "st.thermostat.thermostat-up"}
-        standardTile("TempDown", "device.button") { state "Cool Down", label:'${name}', action:"setTempDown", icon: "st.thermostat.thermostat-down", backgroundColor: '#ffffff'}
+        standardTile("TempUp", "device.button") { state "Cool", label:'${name}', action:"setTempUp", icon: "st.thermostat.thermostat-up", backgroundColor: '#003cec'}
+        standardTile("TempDown", "device.button") { state "Cool", label:'${name}', action:"setTempDown", icon: "st.thermostat.thermostat-down", backgroundColor: '#003cec'}
         
-        standardTile("TempUpHeat", "device.button") { state "Heat Up", label:'${name}', action:"setTempUpHeat", icon: "st.thermostat.thermostat-up"}
-        standardTile("TempDownHeat", "device.button") { state "Heat Down", label:'${name}', action:"setTempDownHeat", icon: "st.thermostat.thermostat-down", backgroundColor: '#ffffff'}
+        standardTile("TempUpHeat", "device.button") { state "Heat", label:'${name}', action:"setTempUpHeat", icon: "st.thermostat.thermostat-up", backgroundColor: '#e14902'}
+        standardTile("TempDownHeat", "device.button") { state "Heat", label:'${name}', action:"setTempDownHeat", icon: "st.thermostat.thermostat-down", backgroundColor: '#e14902'}
         
         
         standardTile("thermostatMode", "device.thermostatMode", inactiveLabel: false, decoration: "flat") {
