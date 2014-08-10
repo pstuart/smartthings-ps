@@ -29,15 +29,15 @@ preferences {
         input "thermostats", "capability.thermostat", title: "Select thermostat", required: false, multiple: true
     }
 /*
-    section ("ThinkSpeak channel id...") {
+    section ("ThinkSpeak channel id...14498") {
         input "channelId", "number", title: "Channel id"
     }
 
-    section ("ThinkSpeak write key...") {
+    section ("ThinkSpeak write key...PEYDNNJLT4WRG6I7") {
         input "channelKey", "text", title: "Channel key"
     }
   */  
-    section ("Xively Info api key ") {
+    section ("Xively Info ") {
     	input "xi_apikey", "text", title: "Xively API Key"
         input "xi_feed", "number", title: "Xively Feed ID"
     }
@@ -49,16 +49,19 @@ def installed() {
 
 def updated() {
     unsubscribe()
+    
     initialize()
 }
 
 def initialize() {
-	if(!state.subscribe) {
-    	subscribe(app, appTouch)
+	state.clear()
+//	if(!state.subscribe) {
     	unschedule(checkSensors)
-		schedule("0 */15 * * * ?", "checkSensors") //Check every 5 mins
-		state.subscribe = true
-	}
+		//schedule("0 */15 * * * ?", "checkSensors") //Check every 5 mins
+        schedule("0 */15 * * * ?", "checkSensors")
+    	subscribe(app, appTouch)
+//		state.subscribe = true
+//	}
 	/*
     subscribe(temperatures, "temperature", handleTemperatureEvent)
     subscribe(humidities, "humidities", handlehumidityEvent)
@@ -142,60 +145,82 @@ def checkSensors() {
     
     
     def logitems = []
-    def states = [:]
+    //def states = [:]
     for (t in settings.temperatures) {
-	    def deviceState = captureState(t)
+	    //def deviceState = captureState(t)
 		//log.debug "$t.name : $t.displayName : $deviceState.temperature"
-        def deviceID = t.id
-		states[deviceID] = deviceState
+        //def deviceID = t.id
+		//states[deviceID] = deviceState
         //if (deviceID == "temperature") {
-        logitems.add([t.displayName, "temperature", deviceState.temperature] )
+        //logitems.add([t.displayName, "temperature", deviceState.temperature] )
+        
+        logitems.add([t.displayName, "temperature", t.latestValue("temperature")] )
+        state[t.displayName + ".temp"] = t.latestValue("temperature")
+        
         //logField2("temperature", t.displayName, deviceState.temperature )
         //}
     }
     for (t in settings.humidities) {
-	    def deviceState = captureState(t)
-		def deviceID = t.id
-		states[deviceID] = deviceState
-        logitems.add([t.displayName, "humidity", deviceState.humidity])
+	    //def deviceState = captureState(t)
+		//def deviceID = t.id
+		//states[deviceID] = deviceState
+        //logitems.add([t.displayName, "humidity", deviceState.humidity])
+        
+        logitems.add([t.displayName, "humidity", t.latestValue("humidity")] )
+        state[t.displayName + ".humidity"] = t.latestValue("humidity")
     }
     for (t in settings.batteries) {
-	    def deviceState = captureState(t)
-        //log.debug t
-		def deviceID = t.id
-		states[deviceID] = deviceState
-        logitems.add([t.displayName, "battery", deviceState.battery])
+	    //def deviceState = captureState(t)
+        //log.debug deviceState
+		//def deviceID = t.id
+		//states[deviceID] = deviceState
+        //logitems.add([t.displayName, "battery", deviceState.battery])
+        
+        logitems.add([t.displayName, "battery", t.latestValue("battery")] )
+        state[t.displayName + ".battery"] = t.latestValue("battery")
     }
-    
+    //log.debug settings.batteries.size()
     for (t in settings.contacts) {
-	    def deviceState = captureState(t)
+	    //def deviceState = captureState(t)
 		//log.debug deviceState
-        def deviceID = t.id
-		states[deviceID] = deviceState
-        logitems.add([t.displayName, "contact", deviceState.contact])
+        //def deviceID = t.id
+		//states[deviceID] = deviceState
+        //logitems.add([t.displayName, "contact", deviceState.contact])
+        
+        logitems.add([t.displayName, "contact", t.latestValue("contact")] )
+        state[t.displayName + ".contact"] = t.latestValue("contact")
     }
     
     for (t in settings.motions) {
-	    def deviceState = captureState(t)
+	    //def deviceState = captureState(t)
         //log.debug deviceState
-		def deviceID = t.id
-		states[deviceID] = deviceState
-        logitems.add([t.displayName, "motion", deviceState.motion])
+		//def deviceID = t.id
+		//states[deviceID] = deviceState
+        //logitems.add([t.displayName, "motion", deviceState.motion])
+        
+        logitems.add([t.displayName, "motion", t.latestValue("motion")] )
+        state[t.displayName + ".motion"] = t.latestValue("motion")
     }
     
     for (t in settings.switches) {
-	    def deviceState = captureState(t)
+	    //def deviceState = captureState(t)
 		//log.debug deviceState
-        def deviceID = t.id
-		states[deviceID] = deviceState
-        logitems.add([t.displayName, "contact", deviceState.switch])
+        //def deviceID = t.id
+		//states[deviceID] = deviceState
+        //logitems.add([t.displayName, "contact", deviceState.switch])
+        
+        logitems.add([t.displayName, "switch", t.latestValue("switch")] )
+        state[t.displayName + ".switch"] = t.latestValue("switch")
     }
     
     for (t in settings.thermostats) {
-	    def deviceState = captureState(t)
-		def deviceID = t.id + "tstat"
+	    //def deviceState = captureState(t)
+		//def deviceID = t.id + "tstat"
 		//states[deviceID] = deviceState
-        logitems.add([t.displayName, "thermostat.temperature", deviceState.coolingSetpoint])
+        //logitems.add([t.displayName, "thermostat.temperature", deviceState.coolingSetpoint])
+        //log.debug t
+        logitems.add([t.displayName, "thermostat.coolingSetpoint", t.latestValue("coolingSetpoint")] )
+        state[t.displayName + ".coolingSetpoint"] = t.latestValue("coolingSetpoint")
     }
     
     //log.debug states
