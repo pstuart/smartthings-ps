@@ -1,0 +1,121 @@
+/**
+ *  ps_Dust to Dawn Motion Lights
+ *
+ *  Copyright 2014 patrick@patrickstuart.com
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ *  in compliance with the License. You may obtain a copy of the License at:
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
+ *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+ *  for the specific language governing permissions and limitations under the License.
+ *
+ */
+definition(
+    name: "ps_Dust to Dawn Motion Lights",
+    namespace: "ps",
+    author: "patrick@patrickstuart.com",
+    description: "Turn lights on at Dust, motion bright, fade out no motion, turn off lights at Dawn...",
+    category: "My Apps",
+    iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
+    iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png")
+
+
+preferences {
+	section("Select Dimmers you want to Use") {
+        input "motions", "capability.motionSensor", title: "Motions", required: false, multiple: true
+        input "switches", "capability.switchLevel", title: "Switches", required: false, multiple: true
+	}
+    section ("Zip code (optional, defaults to location coordinates)...") {
+		input "zipCode", "text", required: false
+	}
+}
+
+def installed() {
+	log.debug "Installed with settings: ${settings}"
+
+	initialize()
+}
+
+def updated() {
+	log.debug "Updated with settings: ${settings}"
+
+	unsubscribe()
+	initialize()
+}
+
+def initialize() {
+    subscribe(motions, "motion.active", handleMotionEvent)
+	scheduleAstroCheck()
+	astroCheck()
+}
+
+def scheduleAstroCheck() {
+	def min = Math.round(Math.floor(Math.random() * 60))
+	def exp = "0 $min * * * ?"
+    //log.debug "$exp"
+	schedule(exp, astroCheck) // check every hour since location can change without event?
+    state.hasRandomSchedule = true
+}
+
+def astroCheck() {
+	if (!state.hasRandomSchedule && state.riseTime) {
+    	log.info "Rescheduling random astro check"
+        unschedule("astroCheck")
+    	scheduleAstroCheck()
+    }
+	def s = getSunriseAndSunset(zipCode: zipCode)
+
+	def now = new Date()
+	def riseTime = s.sunrise
+	def setTime = s.sunset
+	//log.debug "riseTime: $riseTime"
+	//log.debug "setTime: $setTime"
+	if (state.riseTime != riseTime.time || state.setTime != setTime.time) {
+		state.riseTime = riseTime.time
+		state.setTime = setTime.time
+
+		unschedule("sunriseHandler")
+		unschedule("sunsetHandler")
+
+		if (riseTime.after(now)) {
+			log.info "scheduling sunrise handler for $riseTime"
+			runOnce(riseTime, sunriseHandler)
+		}
+
+		if (setTime.after(now)) {
+			log.info "scheduling sunset handler for $setTime"
+			runOnce(setTime, sunsetHandler)
+		}
+	}
+}
+
+def sunriseHandler() {
+	log.info "Executing sunrise handler"
+    switches.setLevel(0.0)
+	unschedule("sunriseHandler") // Temporary work-around for scheduling bug
+}
+
+def sunsetHandler() {
+	log.info "Executing sunset handler"
+    switches.setLevel(20.0)
+    //switches.on()
+    log.debug switches
+	unschedule("sunsetHandler") // Temporary work-around for scheduling bug
+}
+
+def handleMotionEvent(evt) {
+	log.debug "Motion Detected do something"
+    switches.setLevel(100.0)
+    //switches.on()
+    def s = getSunriseAndSunset(zipCode: zipCode)
+	def now = new Date()
+    //log.debug now
+    //log.debug s.sunrise
+    log.debug (s.sunrise < now)
+    if (s.sunrise < now) {
+    runIn(60, sunsetHandler)
+    }
+}
