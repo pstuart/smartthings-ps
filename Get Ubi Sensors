@@ -25,6 +25,10 @@ metadata {
 		capability "Relative Humidity Measurement"
 		capability "Illuminance Measurement"
 		capability "Temperature Measurement"
+        
+        
+		attribute "airPressure", "string"
+        attribute "soundLevel", "string"
     }
 
 	simulator {
@@ -44,17 +48,17 @@ metadata {
                 ]
             )
         }
-        valueTile("humidity", "device.humidity", inactiveLabel: false, decoration: "flat") {
+        valueTile("humidity", "device.humidity", inactiveLabel: false) {
             state "default", label:'${currentValue}%', unit:"Humidity"
         }
         valueTile("illuminance", "device.illuminance", inactiveLabel: false) {
 			state "luminosity", label:'${currentValue}lux', unit:"Light"
 		}
         valueTile("airPressure", "device.airPressure", inactiveLabel: false) {
-        	state "default", label:'${currentValue}Bar', unit:"Air Pressure"
+        	state "default", label:'${currentValue}Kpa', unit:"Air Pressure"
         }
         valueTile("soundLevel", "device.soundLevel", inactiveLabel: false) {
-        	state "default", label:'${currentValue}dB', unit:"Sound"
+        	state "default", label:'${currentValue}db', unit:"Sound"
         }
         standardTile("refresh", "device.poll", inactiveLabel: false, decoration: "flat") {
             state "default", action:"polling.poll", icon:"st.secondary.refresh"
@@ -138,7 +142,7 @@ def login() {
         v.temp = Double.parseDouble(v.temp) * 1.8 + 32 // Temp in F
         v.humidity = linesAsList[11].minus("Humidity").minus("%") // humidity
         v.airPressure = linesAsList[12].minus("Air Pressure").minus("KPa") //Air Pressure
-        v.airPressure = Double.parseDouble(v.airPressure) / 100// into bar
+        //v.airPressure = Double.parseDouble(v.airPressure) / 100// into bar
         v.soundLevel = linesAsList[13].minus("Sound level").minus("dB") //Sound Level
         v.lightLevel = linesAsList[14].minus("Light level").minus("lux") //Light Level
         log.debug v
@@ -152,6 +156,3 @@ def login() {
         }
     
 }
-
-
-
