@@ -1,0 +1,157 @@
+/**
+ *  ps_Ubi
+ *
+ *  Copyright 2014 patrick@patrickstuart.com
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ *  in compliance with the License. You may obtain a copy of the License at:
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
+ *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+ *  for the specific language governing permissions and limitations under the License.
+ *
+ */
+
+preferences {
+    input("username", "text", title: "Username", description: "Your Ubi Portal username (usually an email address)")
+    input("password", "password", title: "Password", description: "Your Ubi password")
+    }
+    
+metadata {
+	definition (name: "ps_Ubi", namespace: "ps", author: "patrick@patrickstuart.com") {
+		capability "Polling"
+		capability "Relative Humidity Measurement"
+		capability "Illuminance Measurement"
+		capability "Temperature Measurement"
+    }
+
+	simulator {
+    
+    }
+
+	tiles {
+		valueTile("temperature", "device.temperature", width: 1, height: 1, canChangeIcon: false) {
+            state("temperature", label: '${currentValue}°', unit:"F", backgroundColors: [
+                    [value: 31, color: "#153591"],
+                    [value: 44, color: "#1e9cbb"],
+                    [value: 59, color: "#90d2a7"],
+                    [value: 74, color: "#44b621"],
+                    [value: 84, color: "#f1d801"],
+                    [value: 95, color: "#d04e00"],
+                    [value: 96, color: "#bc2323"]
+                ]
+            )
+        }
+        valueTile("humidity", "device.humidity", inactiveLabel: false, decoration: "flat") {
+            state "default", label:'${currentValue}%', unit:"Humidity"
+        }
+        valueTile("illuminance", "device.illuminance", inactiveLabel: false) {
+			state "luminosity", label:'${currentValue}lux', unit:"Light"
+		}
+        valueTile("airPressure", "device.airPressure", inactiveLabel: false) {
+        	state "default", label:'${currentValue}Bar', unit:"Air Pressure"
+        }
+        valueTile("soundLevel", "device.soundLevel", inactiveLabel: false) {
+        	state "default", label:'${currentValue}dB', unit:"Sound"
+        }
+        standardTile("refresh", "device.poll", inactiveLabel: false, decoration: "flat") {
+            state "default", action:"polling.poll", icon:"st.secondary.refresh"
+        }
+        
+        
+        main "temperature"
+        details(["temperature", "humidity", "illuminance", "airPressure", "soundLevel", "refresh"])
+	}
+}
+
+// parse events into attributes
+def parse(String description) {
+	log.debug "Parsing '${description}'"
+	// TODO: handle 'humidity' attribute
+	// TODO: handle 'illuminance' attribute
+	// TODO: handle 'temperature' attribute
+	// TODO: handle 'carbonMonoxide' attribute
+
+}
+
+// handle commands
+def poll() {
+	log.debug "Executing 'poll'"
+    
+	// TODO: handle 'poll' command
+    login()
+}
+
+
+
+
+def login() {   
+    def params = [
+    	uri: 'https://portal.theubi.com/login.do',
+    	headers: [
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Encoding': 'sdch',
+        'Host': 'portal.theubi.com',
+        'DNT': '1',
+        'Origin': 'https://portal.theubi.com/login.jsp',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/28.0.1500.95 Safari/537.36'
+   		 ],
+    	body: [j_username: username, j_password: password]
+	]
+
+	data.cookies = ''
+
+	httpPost(params) { response ->
+    	log.debug "Request was successful, $response.status"
+    	//log.debug response.headers
+		response.getHeaders('Set-Cookie').each {
+    		String cookie = it.value.split(';')[0]
+        	//log.debug "Adding cookie to collection: $cookie"
+        	data.cookies = data.cookies + cookie + ';'
+    	}
+    	//log.debug "Cookies: $data.cookies"
+
+	}
+       
+
+    def params2 = [
+    	uri: "https://portal.theubi.com/room/",
+    	headers: [
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Encoding': 'plain', 
+          'Cookie': data.cookies        
+          ],
+		]
+
+	httpGet(params2) { response2 ->
+    	log.debug "Request was successful, $response2.status"
+        def doc = response2.data
+        def x = new StringWriter()
+        doc[0].children[1].children[5].children[1].writeTo(x)
+        def linesAsList = x.toString().minus(" ").split( /\n|\r|\n\r|\r\n/ ).collect { it.replace( "'", '' ) }
+        //log.debug linesAsList
+        def v = [:]
+		v.temp = linesAsList[6].minus("document.write(toFahrenheit(").minus("));") //temp in C
+        v.temp = Double.parseDouble(v.temp) * 1.8 + 32 // Temp in F
+        v.humidity = linesAsList[11].minus("Humidity").minus("%") // humidity
+        v.airPressure = linesAsList[12].minus("Air Pressure").minus("KPa") //Air Pressure
+        v.airPressure = Double.parseDouble(v.airPressure) / 100// into bar
+        v.soundLevel = linesAsList[13].minus("Sound level").minus("dB") //Sound Level
+        v.lightLevel = linesAsList[14].minus("Light level").minus("lux") //Light Level
+        log.debug v
+        
+        sendEvent(name: 'temperature', value: v.temp)
+        sendEvent(name: 'humidity', value: v.humidity)
+        sendEvent(name: 'illuminance', value: v.lightLevel, unit: "lux")
+        sendEvent(name: 'airPressure', value: v.airPressure.toString())
+        sendEvent(name: 'soundLevel', value: v.soundLevel)
+        
+        }
+    
+}
+
+
+
