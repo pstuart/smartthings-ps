@@ -22,22 +22,14 @@ preferences {
         input "temperatures", "capability.temperatureMeasurement", title: "Temperatures", required:false, multiple: true
         input "humidities", "capability.relativeHumidityMeasurement", title: "Humidities", required:false, multiple: true
         input "contacts", "capability.contactSensor", title: "Contacts", required: false, multiple: true
-        //input "accelerations", "capability.accelerationSensor", title: "Accelerations", required: false, multiple: true
+        input "illuminances", "capability.illuminanceMeasurement", title: "Illuminances", required: false, multiple: true
         input "motions", "capability.motionSensor", title: "Motions", required: false, multiple: true
         input "switches", "capability.switch", title: "Switches", required: false, multiple: true
         input "batteries", "capability.battery", title: "Batteries", required:false, multiple: true
         input "thermostats", "capability.thermostat", title: "Select thermostat", required: false, multiple: true
     }
-/*
-    section ("ThinkSpeak channel id...14498") {
-        input "channelId", "number", title: "Channel id"
-    }
-
-    section ("ThinkSpeak write key...PEYDNNJLT4WRG6I7") {
-        input "channelKey", "text", title: "Channel key"
-    }
-  */  
-    section ("Xively Info ") {
+    
+    section ("Xively Info api key v9AT8scA47CUitzSgM861slU4rhykTWzkqa01c4GtI9wGCEU feed 1561084157") {
     	input "xi_apikey", "text", title: "Xively API Key"
         input "xi_feed", "number", title: "Xively Feed ID"
     }
@@ -154,7 +146,7 @@ def checkSensors() {
         //if (deviceID == "temperature") {
         //logitems.add([t.displayName, "temperature", deviceState.temperature] )
         
-        logitems.add([t.displayName, "temperature", t.latestValue("temperature")] )
+        logitems.add([t.displayName, "temperature", Double.parseDouble(t.latestValue("temperature").toString())] )
         state[t.displayName + ".temp"] = t.latestValue("temperature")
         
         //logField2("temperature", t.displayName, deviceState.temperature )
@@ -165,8 +157,7 @@ def checkSensors() {
 		//def deviceID = t.id
 		//states[deviceID] = deviceState
         //logitems.add([t.displayName, "humidity", deviceState.humidity])
-        
-        logitems.add([t.displayName, "humidity", t.latestValue("humidity")] )
+        logitems.add([t.displayName, "humidity", Double.parseDouble(t.latestValue("humidity").toString())] )
         state[t.displayName + ".humidity"] = t.latestValue("humidity")
     }
     for (t in settings.batteries) {
@@ -176,7 +167,7 @@ def checkSensors() {
 		//states[deviceID] = deviceState
         //logitems.add([t.displayName, "battery", deviceState.battery])
         
-        logitems.add([t.displayName, "battery", t.latestValue("battery")] )
+        logitems.add([t.displayName, "battery", Double.parseDouble(t.latestValue("battery").toString())] )
         state[t.displayName + ".battery"] = t.latestValue("battery")
     }
     //log.debug settings.batteries.size()
@@ -200,6 +191,21 @@ def checkSensors() {
         
         logitems.add([t.displayName, "motion", t.latestValue("motion")] )
         state[t.displayName + ".motion"] = t.latestValue("motion")
+    }
+    
+    for (t in settings.illuminances) {
+	    //def deviceState = captureState(t)
+        //log.debug deviceState
+		//def deviceID = t.id
+		//states[deviceID] = deviceState
+        //logitems.add([t.displayName, "motion", deviceState.motion])
+        //log.debug t.latestValue("illuminance")
+        //log.debug (t.latestValue("illuminance") instanceof Double)
+        log.debug t.displayName
+        def x = new BigDecimal(t.latestValue("illuminance") ) // instanceof Double)
+        log.debug x
+        logitems.add([t.displayName, "illuminance", x] )
+        state[t.displayName + ".illuminance"] = x
     }
     
     for (t in settings.switches) {
