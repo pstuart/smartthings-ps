@@ -139,12 +139,12 @@ def login() {
         //log.debug linesAsList
         def v = [:]
 		v.temp = linesAsList[6].minus("document.write(toFahrenheit(").minus("));") //temp in C
-        v.temp = Double.parseDouble(v.temp) * 1.8 + 32 // Temp in F
-        v.humidity = linesAsList[11].minus("Humidity").minus("%") // humidity
+        v.temp = Math.round((Double.parseDouble(v.temp) * 1.8 + 32)*100) /100 // Temp in F
+        v.humidity = Double.parseDouble(linesAsList[11].minus("Humidity").minus("%")) // humidity
         v.airPressure = linesAsList[12].minus("Air Pressure").minus("KPa") //Air Pressure
         //v.airPressure = Double.parseDouble(v.airPressure) / 100// into bar
-        v.soundLevel = linesAsList[13].minus("Sound level").minus("dB") //Sound Level
-        v.lightLevel = linesAsList[14].minus("Light level").minus("lux") //Light Level
+        v.soundLevel = Double.parseDouble(linesAsList[13].minus("Sound level").minus("dB")) //Sound Level
+        v.lightLevel = Double.parseDouble(linesAsList[14].minus("Light level").minus("lux")) //Light Level
         log.debug v
         
         sendEvent(name: 'temperature', value: v.temp)
