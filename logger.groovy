@@ -29,7 +29,7 @@ preferences {
         input "thermostats", "capability.thermostat", title: "Select thermostat", required: false, multiple: true
     }
     
-    section ("Xively Info api key v9AT8scA47CUitzSgM861slU4rhykTWzkqa01c4GtI9wGCEU feed 1561084157") {
+    section ("Xively Info") {
     	input "xi_apikey", "text", title: "Xively API Key"
         input "xi_feed", "number", title: "Xively Feed ID"
     }
