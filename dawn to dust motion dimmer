@@ -35,147 +35,86 @@ preferences {
 
 def installed() {
 	log.debug "Installed with settings: ${settings}"
-
 	initialize()
 }
 
 def updated() {
 	log.debug "Updated with settings: ${settings}"
-
 	unsubscribe()
 	initialize()
 }
 
 def initialize() {
     subscribe(motions, "motion", handleMotionEvent)
-	//scheduleAstroCheck()
-	//astroCheck()
-    checkSun()
-    
+    checkSun()   
 }
-
-
 
 def checkSun() {
     def zip = settings.zip as String
     def sunInfo = getSunriseAndSunset(zipCode: zip)
     def current = now()
-    if(sunInfo.sunrise.time > current ||
-    sunInfo.sunset.time < current) {
-    state.sunMode = "SunsetMode"
+    if(sunInfo.sunrise.time > current || sunInfo.sunset.time < current) {
+    	state.sunMode = "SunsetMode"
     }
     else {
-    state.sunMode = "SunriseMode"
+    	state.sunMode = "SunriseMode"
     }
     log.info("Sunset: ${sunInfo.sunset.time}")
     log.info("Sunrise: ${sunInfo.sunrise.time}")
     log.info("Current: ${current}")
     log.info("sunMode: ${state.sunMode}")
-    //Set up run at sunrise
+    
     if(current < sunInfo.sunrise.time) {
     	runIn(((sunInfo.sunrise.time - current) / 1000).toInteger(), setSunrise)
     }
+    
     if(current < sunInfo.sunset.time) {
-    runIn(((sunInfo.sunset.time - current) / 1000).toInteger(), setSunset)
+    	runIn(((sunInfo.sunset.time - current) / 1000).toInteger(), setSunset)
     }
     schedule(timeTodayAfter(new Date(), "01:00", location.timeZone), checkSun)
+    if (state.sunMode == "SunriseMode")
+    {
+    	setSunrise()
+    }
+    else
+    {
+    	setSunset()
+    }
 }
 
 def handleMotionEvent(evt) {
 	log.debug "Motion event Detected do something $evt"
-    /*
-    //switches?.setLevel(100.0)
-    //switches.on()
-    def s = getSunriseAndSunset(zipCode: zipCode)
-    //log.debug s
-	def now = new Date()
-    log.debug "It is currently $now"
-    log.debug "The sun will rise at $s.sunrise"
-    log.debug "The sun will set at $s.sunset"
-    log.debug "It is after sunset?"
-    log.debug (s.sunset.after(now))
-    log.debug "It is after sunrise?"
-    log.debug (s.sunrise.after(now))
-    def befaft = s.sunrise.compareTo(s.sunset)
-    log.debug befaft
-    log.debug now.compareTo(s.sunrise)
-    log.debug now.compareTo(s.sunset)
-    */
+    log.debug state
     state.motion = evt.value
     
-    if (state.sunMode == "SunsetMode") {
+    //testing force state.sunMode to SunsetMode
+    //state.sunMode = "SunsetMode"
+    
+    if (state.sunMode == "SunsetMode" && state.motion == "active") {
     	switches?.setLevel(100)
+        state.Level = "99"
     	log.debug "Set the switches to level 100"
+        log.debug state
+        
     	//Change this to # of seconds to leave light on
-        runIn(120, setSunSet)
+        runIn(300, setSunset)
     }
-    else //if (s.sunrise.after(now))
+    else 
     {
     	log.debug "it is after sunrise but before sunset, do nothing"
     //runIn(120, sunriseHandler)
     }
 }
 
-def setSunSet() {
+def setSunset() {
 	log.debug "Sunset handler"
     switches?.setLevel(20)
+    state.Level = "20"
     // if state.motion is false
 }
 
-def setSunRise() {
+def setSunrise() {
 	log.info "Executing sunrise handler"
     switches?.setLevel(0)
-	//unschedule("sunriseHandler") // Temporary work-around for scheduling bug
+    state.Level = "off"
 }
-
-/*
-def scheduleAstroCheck() {
-	def min = Math.round(Math.floor(Math.random() * 60))
-	def exp = "0 $min * * * ?"
-    //log.debug "$exp"
-	schedule(exp, astroCheck) // check every hour since location can change without event?
-    state.hasRandomSchedule = true
-}
-
-def astroCheck() {
-	if (!state.hasRandomSchedule && state.riseTime) {
-    	log.info "Rescheduling random astro check"
-        unschedule("astroCheck")
-    	scheduleAstroCheck()
-    }
-	def s = getSunriseAndSunset(zipCode: zipCode)
-
-	def now = new Date()
-	def riseTime = s.sunrise
-	def setTime = s.sunset
-	//log.debug "riseTime: $riseTime"
-	//log.debug "setTime: $setTime"
-	if (state.riseTime != riseTime.time || state.setTime != setTime.time) {
-		state.riseTime = riseTime.time
-		state.setTime = setTime.time
-
-		unschedule("sunriseHandler")
-		unschedule("sunsetHandler")
-
-		if (riseTime.after(now)) {
-			log.info "scheduling sunrise handler for $riseTime"
-			runOnce(riseTime, sunriseHandler)
-		}
-
-		if (setTime.after(now)) {
-			log.info "scheduling sunset handler for $setTime"
-			runOnce(setTime, sunsetHandler)
-		}
-	}
-}
-
-
-
-def sunsetHandler() {
-	log.info "Executing sunset handler"
-    switches?.setLevel(20.0)
-    //switches.on()
-    log.debug switches
-	unschedule("sunsetHandler") // Temporary work-around for scheduling bug
-}
-*/
