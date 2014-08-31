@@ -82,15 +82,36 @@ def parse(String description)
 		//log.trace msg
 		log.trace "data: $msg.data"
 	}
-	else 
-	{
-		def name = description?.startsWith( "on/off: " ) ? "switch" : null
-		def value = name == "switch" ? ( description?.endsWith( " 1" ) ? "on" : "off" ) : null
-		def result = createEvent( name: name, value: value )
+    if (description?.startsWith("read attr"))
+    {
+    	def x = description.split(',')
+        def dimval = x.findAll { it.contains("value") }
+        dimval = dimval[0].minus(" value: ")
+        def i = Math.round(convertHexToInt(dimval) / 256 * 100 )
+        //def i = dimval.decodeHex()
+        log.debug "Dimval is $dimval and value is $i"
+        
+		sendEvent( name: "level", value: i )
+        //log.debug "Level cluster is $description.cluster and value is $description.value"
+    }
+    
+    
+    if(description?.endsWith("1001"))
+    {
+        def result = createEvent( name: "switch", value: "on" )
 
-		log.debug "parse returned ${result?.descriptionText}"
-		return result
-	}
+        log.debug "parse returned ${result?.descriptionText}"
+        return result
+    }
+    
+     if(description?.endsWith("1000"))
+    {
+        def result = createEvent( name: "switch", value: "off" )
+
+        log.debug "parse returned ${result?.descriptionText}"
+        return result
+    }
+	
 }
 
 def getClusters() {
@@ -98,14 +119,14 @@ def getClusters() {
     //"st rattr 0x${device.deviceNetworkId} 4 6 0x01"
 	"zdo active 0x${device.deviceNetworkId}"
     //x = new BigInteger(device.endpointId, 16).toString()
-    log.debug "Device Endpoint is $x"
+    //log.debug "Device Endpoint is $x"
 }
 
 def on() 
 {
 	def cmds = []
-    def level = device.latestValue( "level" ) as Integer ?: 0
-
+    def level = device.latestValue("level") as Integer ?: 0
+	
     log.trace "on(): lastLevel=${level}"
 
     if ( ( level > 0 ) && ( level < 100 ) )
@@ -115,7 +136,8 @@ def on()
     	log.trace "on(): lastLevel=${level} valid, restoring to level=${levelHex}"
 
 		sendEvent( name: "level", value: level )
-		sendEvent( name: "switch.setLevel", value: level )
+        sendEvent( name: "switch", value: "on" )
+		//sendEvent( name: "switch.setLevel", value: level )
 
     	//cmds << "st cmd 0x${device.deviceNetworkId} ${endpointId} 6 1 {}"
 		cmds << "st cmd 0x${device.deviceNetworkId} ${endpointId} 8 4 {${levelHex} 0000}"
@@ -123,7 +145,8 @@ def on()
 	else
 	{
 		sendEvent( name: "level", value: 99 )
-		sendEvent( name: "switch.setLevel", value: 99 )
+        sendEvent( name: "switch", value: "on" )
+		//sendEvent( name: "switch.setLevel", value: 99 )
 
 		cmds << "st cmd 0x${device.deviceNetworkId} ${endpointId} 6 1 {}"
 	}
@@ -153,7 +176,7 @@ def refresh()
 	log.trace "refresh()"
 
 	cmds << "st rattr 0x${device.deviceNetworkId} 1 6 0"
-
+	cmds << "st rattr 0x${device.deviceNetworkId} 1 8 0"
     log.debug "refresh(): zigbee cmds: ${cmds}"
 	cmds
 }
@@ -206,4 +229,8 @@ private hex(value, width=2)
 private getEndpointId() 
 {
 	new BigInteger(device.endpointId, 16).toString()
+}
+
+private Integer convertHexToInt(hex) {
+	Integer.parseInt(hex,16)
 }
