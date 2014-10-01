@@ -15,7 +15,7 @@
  */
 metadata {
 	// Automatically generated. Make future change here.
-	definition (name: "ps_HueZigbeeHA", namespace: "ps", author: "patrick@patrickstuart.com") {
+	definition (name: "ps_Control4_Dimmer_ZigbeeHA", namespace: "ps", author: "patrick@patrickstuart.com") {
 		capability "Switch Level"
 		capability "Actuator"
 		capability "Color Control"
@@ -25,7 +25,6 @@ metadata {
 		capability "Refresh"
 		capability "Sensor"
 
-		command "setAdjustedColor"
 
 		//fingerprint endpointId: "1", profileId: "C25D", inClusters: "0000,0003,0004,0005,0006,0008,000A"
         fingerprint endpointId: "01", profileId: "0104", deviceId: "0101", deviceVersion: "00", inClusters: "07 0000 0003 0004 0005 0006 0008 000A", outClusters: "00"
@@ -42,6 +41,7 @@ metadata {
 		reply "zcl on-off off": "on/off: 0"
         
         command "test"
+        command "test2"
 	}
 
 	// UI tile definitions
@@ -120,7 +120,12 @@ def parse(String description) {
 }
 
 def test() {
-	"st cmd 0x${device.deviceNetworkId} c5 1 { 550 sa c4.dm.cc 00 001 }"
+	//test turning on? 600 sa c4.dm.t0c 00
+	"st cmd 0x${device.deviceNetworkId} C4 C5 0 {3630302073612063342E646D2E743063203030}"
+}
+def test2() {
+	//test turning off? 601 sa c4.dm.t0c 64
+	"st cmd 0x${device.deviceNetworkId} C5 C5 0 {3630312073612063342E646D2E743063203634}"
 }
 def on() {
 	// just assume it works for now
