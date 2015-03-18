@@ -1,5 +1,5 @@
 /**
- *  Generic Camera Device v1.0.07102014
+ *  ps_Control4_Dimmer_ZigbeeHA
  *
  *  Copyright 2014 patrick@patrickstuart.com
  *
@@ -14,169 +14,249 @@
  *
  */
 metadata {
-	definition (name: "Generic Camera Device", namespace: "ps", author: "patrick@patrickstuart.com") {
-		capability "Image Capture"
-		capability "Sensor"
+	definition (name: "ps_Control4_Dimmer_ZigbeeHA", namespace: "ps", author: "patrick@patrickstuart.com") {
+		capability "Switch Level"
 		capability "Actuator"
+		capability "Switch"
+		capability "Configuration"
+		capability "Refresh"
+		capability "Polling"
+
+        fingerprint endpointId: "01", profileId: "0104", deviceId: "0101", inClusters: "0000 0003 0004 0005 0006 0008 000A"
+        fingerprint endpointId: "C4", profileId: "C25D", deviceId: "0101", inClusters: "0001"
         
 	}
-
-    preferences {
-    input("CameraIP", "string", title:"Camera IP Address", description: "Please enter your camera's IP Address", required: true, displayDuringSetup: true)
-    input("CameraPort", "string", title:"Camera Port", description: "Please enter your camera's Port", defaultValue: 80 , required: true, displayDuringSetup: true)
-    input("CameraPath", "string", title:"Camera Path to Image", description: "Please enter the path to the image", defaultValue: "/SnapshotJPEG?Resolution=640x480&Quality=Clarity", required: true, displayDuringSetup: true)
-    input("CameraAuth", "bool", title:"Does Camera require User Auth?", description: "Please choose if the camera requires authentication (only basic is supported)", defaultValue: true, displayDuringSetup: true)
-    input("CameraPostGet", "string", title:"Does Camera use a Post or Get, normally Get?", description: "Please choose if the camera uses a POST or a GET command to retreive the image", defaultValue: "GET", displayDuringSetup: true)
-    input("CameraUser", "string", title:"Camera User", description: "Please enter your camera's username", required: false, displayDuringSetup: true)
-    input("CameraPassword", "string", title:"Camera Password", description: "Please enter your camera's password", required: false, displayDuringSetup: true)
-	}
     
+ 	preferences {
+		input("OnSpeed", "text", title:"Turn On Speed", description: "Please enter the speed at which the dimmer turns on", defaultValue:"1500", required: true, displayDuringSetup: true)
+		input("OffSpeed", "text", title:"Turn Off Speed", description: "Please enter the speed at which the dimmer turns off", defaultValue:"1500", required: true, displayDuringSetup: true)
+        input("DefaultOnValue", "text", title:"Default On Value", description: "Please enter the default value you want ST to turn on to, in case the last dimmed value is lost.", defaultValue:"75", required: true, displayDuringSetup: true)
+        
+    }
 	simulator {
-    
+		// status messages
+		status "on": "on/off: 1"
+		status "off": "on/off: 0"
+
+		// reply messages
+		reply "zcl on-off on": "on/off: 1"
+		reply "zcl on-off off": "on/off: 0"
+        
+        command "test"
+        command "getClusters"
 	}
 
 	tiles {
-		standardTile("camera", "device.image", width: 1, height: 1, canChangeIcon: false, inactiveLabel: true, canChangeBackground: true) {
-			state "default", label: "", action: "", icon: "st.camera.dropcam-centered", backgroundColor: "#FFFFFF"
+		standardTile("switch", "device.switch", width: 1, height: 1, canChangeIcon: true) {
+			state "off", label: '${name}', action: "switch.on", icon: "st.switches.switch.off", backgroundColor: "#ffffff"
+			state "on", label: '${name}', action: "switch.off", icon: "st.switches.switch.on", backgroundColor: "#79b821"
+		}
+		standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat") {
+			state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
+		}
+		controlTile("levelSliderControl", "device.level", "slider", height: 1, width: 2, inactiveLabel: false) {
+			state "level", action:"switch level.setLevel"
+		}
+		valueTile("level", "device.level", inactiveLabel: false, decoration: "flat") {
+			state "level", label: 'Level ${currentValue}%'
 		}
 
-		carouselTile("cameraDetails", "device.image", width: 3, height: 2) { }
-
-		standardTile("take", "device.image", width: 1, height: 1, canChangeIcon: false, inactiveLabel: true, canChangeBackground: false) {
-			state "take", label: "Take", action: "Image Capture.take", icon: "st.camera.camera", backgroundColor: "#FFFFFF", nextState:"taking"
-			state "taking", label:'Taking', action: "", icon: "st.camera.take-photo", backgroundColor: "#53a7c0"
-			state "image", label: "Take", action: "Image Capture.take", icon: "st.camera.camera", backgroundColor: "#FFFFFF", nextState:"taking"
-		}
-
-		main "camera"
-		details(["cameraDetails", "take", "error"])
+		main(["switch"])
+		details(["switch", "levelSliderControl", "level", "refresh"])
 	}
 }
 
 def parse(String description) {
-    log.debug "Parsing '${description}'"
-    def map = stringToMap(description)
-
-    def result = []
-
-    if (map.bucket && map.key) { //got a s3 pointer
-    	putImageInS3(map)
-    }
-    else if (map.headers && map.body) { //got device info response
-    	def headerString = new String(map.headers.decodeBase64())
-    	if (headerString.contains("404 Not Found")) {
-    		state.snapshot = "/snapshot.cgi"
-   		}
-
-    	if (map.body) {
-        def bodyString = new String(map.body.decodeBase64())
-        def body = new XmlSlurper().parseText(bodyString)
-        def productName = body?.productName?.text()
-    	if (productName) {
-            log.trace "Product Name: $productName"
-            state.snapshot = ""
-        }
-    }
-    }
-
-    result
-}
-
-def putImageInS3(map) {
-
-	def s3ObjectContent
-
-	try {
-		def imageBytes = getS3Object(map.bucket, map.key + ".jpg")
-
-		if(imageBytes)
-		{
-			s3ObjectContent = imageBytes.getObjectContent()
-			def bytes = new ByteArrayInputStream(s3ObjectContent.bytes)
-			storeImage(getPictureName(), bytes)
-		}
-	}
-	catch(Exception e) {
-		log.error e
-	}
-	finally {
-		if (s3ObjectContent) { s3ObjectContent.close() }
-	}
-}
-
-// handle commands
-def take() {
-	def userpassascii = "${CameraUser}:${CameraPassword}"
-	def userpass = "Basic " + userpassascii.encodeAsBase64().toString()
-    def host = CameraIP 
-    def hosthex = convertIPtoHex(host)
-    def porthex = convertPortToHex(CameraPort)
-    device.deviceNetworkId = "$hosthex:$porthex" 
-    
-    log.debug "The device id configured is: $device.deviceNetworkId"
-    
-    def path = CameraPath 
-    log.debug "path is: $path"
-    log.debug "Requires Auth: $CameraAuth"
-    log.debug "Uses which method: $CameraPostGet"
-    
-    def headers = [:] 
-    headers.put("HOST", "$host:$CameraPort")
-   	if (CameraAuth == "true") {
-        headers.put("Authorization", userpass)
-    }
-    
-    log.debug "The Header is $headers"
-    
-    def method = "GET"
-    try {
-    	if (CameraPostGet.toUpperCase() == "POST") {
-        	method = "POST"
-        	}
-        }
-    catch (Exception e) { // HACK to get around default values not setting in devices
-    	settings.CameraPostGet = "GET"
-        log.debug e
-        log.debug "You must not of set the perference for the CameraPOSTGET option"
-    }
-    
-    log.debug "The method is $method"
-    
-    try {
-    def hubAction = new physicalgraph.device.HubAction(
-    	method: method,
-    	path: path,
-    	headers: headers
-        )
+	//log.trace description
+	if (description?.startsWith("catchall: C25")) {
+		def msg = zigbee.parse(description)
+        //log.trace msg
+        def payloadhex = description.tokenize(" ").last()
+        def payload = payloadhex.decodeHex()
+        def x = ""
+        payload.each() { x += it as char }
         
-	hubAction.options = [outputMsgToS3:true]
-    log.debug hubAction
-    hubAction
+        //log.debug "Payload is $x"
+        
+            if(x.contains("sa c4.dm.cc 00 01"))
+            {
+                def result = createEvent(name: "switch", value: "on")
+                log.debug "Parse returned ${result?.descriptionText}"
+                return result
+            }
+            if(x.contains("sa c4.dm.cc 00 00"))
+            {
+                def result = createEvent(name: "switch", value: "off")
+                log.debug "Parse returned ${result?.descriptionText}"
+                return result
+            }
+            if(x.contains("sa c4.dm.cc 00 02"))
+            {
+                log.debug "Double Tap Top"
+            }
+            if(x.contains("sa c4.dm.cc 01 02"))
+            {
+                log.debug "Double Tap Bottom"
+            } 
+            if(x.contains("sa c4.dm.cc 00 03"))
+            {
+                log.debug "Triple Tap Top"
+            }
+            if(x.contains("sa c4.dm.cc 01 03"))
+            {
+                log.debug "Triple Tap Bottom"
+            } 
+            if(x.contains("sa c4.dm.t0c") || x.contains("sa c4.dm.b0c")) {
+            	log.debug "switch is dimming $x"
+                def l = x.tokenize(" ").last()
+                log.debug l.split()
+            	def i = Math.round(convertHexToInt(l.split()) / 256 * 100 )
+                sendEvent( name: "level", value: i )
+            }
+        
+	}
+        
+    if (description?.startsWith("read attr")) {
+   		//log.debug "Read Attr found"
+        //def descMap = parseDescriptionAsMap(description)
+        //log.debug descMap
+        //log.debug description[-2..-1]
+        def i = Math.round(convertHexToInt(description[-2..-1]) / 256 * 100 )
+        
+		sendEvent( name: "level", value: i )
     }
-    catch (Exception e) {
-    	log.debug "Hit Exception $e on $hubAction"
-    }
+}
+
+def test() {
+/*
+	def cmd = []
+    cmd << "zcl global send-me-a-report 1 0x20 0x20 600 3600 {0100}"
+    cmd << "delay 500"
+    cmd << "send 0x${device.deviceNetworkId} 1 6"
+    cmd << "delay 1000"
+    cmd
+    */
+    //'zcl on-off on'
+    log.debug "$OnSpeed onspeed $OffSpeed offspeed $DefaultOnValue defaultOnValue $state.lastOnValue is state.lastonvalue"
+}
+
+def getClusters() {
+	log.debug "getClusters hit $device.deviceNetworkId"
+    //"st rattr 0x${device.deviceNetworkId} 4 6 0x01"
+	"zdo active 0x${device.deviceNetworkId}"
+}
+
+def on() {
+	log.debug "on()"
+	sendEvent(name: "switch", value: "on")
     
+    //"st cmd 0x${device.deviceNetworkId} 1 6 1 {}"
+    
+    //get level in UI 
+    def value = device.currentValue("level")
+    if (value == 0) { value = state.lastOnValue
+    log.debug "Value is $value"
+    } 
+    def level = new BigInteger(Math.round(value * 255 / 100).toString()).toString(16)
+    //log.debug level
+    
+    def speed = OnSpeed //.toString().padLeft(4, '0')
+    log.debug speed
+    "st cmd 0x${device.deviceNetworkId} 1 8 4 {${level} ${speed} }"
 }
 
-
-
-private getPictureName() {
-	def pictureUuid = java.util.UUID.randomUUID().toString().replaceAll('-', '')
-	return device.deviceNetworkId + "_$pictureUuid" + ".jpg"
+def off() {
+	log.debug "off()"
+    //state.lastOnValue = device.currentValue("level")
+	sendEvent(name: "switch", value: "off")
+	//"st cmd 0x${device.deviceNetworkId} 1 6 0 {}"
+    def speed = OffSpeed.toString().padLeft(4, '0')
+    log.debug speed
+ 	"st cmd 0x${device.deviceNetworkId} 1 8 4 {00 ${speed} }"
 }
 
-private String convertIPtoHex(ipAddress) { 
-    String hex = ipAddress.tokenize( '.' ).collect {  String.format( '%02x', it.toInteger() ) }.join()
-    log.debug "IP address entered is $ipAddress and the converted hex code is $hex"
-    return hex
-
+def refresh() {
+    [
+	"st rattr 0x${device.deviceNetworkId} 1 6 0", "delay 100",
+    "st rattr 0x${device.deviceNetworkId} 1 8 0"
+    ]
 }
 
-private String convertPortToHex(port) {
-	String hexport = port.toString().format( '%04x', port.toInteger() )
-    log.debug hexport
-    return hexport
+def poll(){
+	log.debug "Poll is calling refresh"
+	refresh()
+}
+
+def setLevel(value) { setLevel(value,"0500") }
+
+def setLevel(value, speed) {
+	log.debug value
+    log.debug speed //.toString().padLeft(4, '0')
+    state.lastOnValue = value
+    speed = speed.toString().padLeft(4, '0')
+    log.trace "setLevel($value)"
+   
+	def cmds = []
+	if (value < 8.0) {
+    	log.debug "Value equals 0?"
+		sendEvent(name: "switch", value: "off")
+        
+		cmds << "st cmd 0x${device.deviceNetworkId} 1 8 4 {00 0500}"
+		//cmds << "st cmd 0x${device.deviceNetworkId} 1 6 0 {}"
+	}
+	else if (device.latestValue("switch") == "off") {
+		sendEvent(name: "switch", value: "on")
+	}
+
+	sendEvent(name: "level", value: value)
+	def level = new BigInteger(Math.round(value * 255 / 100).toString()).toString(16)
+	cmds << "st cmd 0x${device.deviceNetworkId} 1 8 4 {${level} ${speed} }"
+	cmds
+}
+
+//def setLevel(value) {
+	
+//}
+
+
+def configure() {
+
+	String zigbeeId = swapEndianHex(device.hub.zigbeeId)
+	log.debug "Confuguring Reporting and Bindings."
+	def configCmds = [	
+
+        //Switch Reporting
+        "zcl global send-me-a-report 6 0 0x10 0 3600 {01}", "delay 500",
+        "send 0x${device.deviceNetworkId} 1 1", "delay 1000",
+
+        //Level Control Reporting
+        "zcl global send-me-a-report 8 0 0x20 5 3600 {0010}", "delay 200",
+        "send 0x${device.deviceNetworkId} 1 1", "delay 1500",
+
+        "zdo bind 0x${device.deviceNetworkId} 1 1 6 {${device.zigbeeId}} {}", "delay 1500",
+		"zdo bind 0x${device.deviceNetworkId} 1 1 8 {${device.zigbeeId}} {}", "delay 500",
+	]
+    return configCmds + refresh() // send refresh cmds as part of config
+}
+
+def uninstalled() {
+
+	log.debug "uninstalled()"
+	response("zcl rftd")
+ 
+}
+
+private getEndpointId() {
+	//log.debug "Device.endpoint is $device.endpointId"
+	new BigInteger(device.endpointId, 16).toString()
+}
+
+private hex(value, width=2) {
+	def s = new BigInteger(Math.round(value).toString()).toString(16)
+	while (s.size() < width) {
+		s = "0" + s
+	}
+	s
 }
 
 private Integer convertHexToInt(hex) {
@@ -184,15 +264,27 @@ private Integer convertHexToInt(hex) {
 }
 
 
-private String convertHexToIP(hex) {
-	log.debug("Convert hex to ip: $hex") 
-	[convertHexToInt(hex[0..1]),convertHexToInt(hex[2..3]),convertHexToInt(hex[4..5]),convertHexToInt(hex[6..7])].join(".")
+private String swapEndianHex(String hex) {
+    reverseArray(hex.decodeHex()).encodeHex()
 }
 
-private getHostAddress() {
-	def parts = device.deviceNetworkId.split(":")
-    log.debug device.deviceNetworkId
-	def ip = convertHexToIP(parts[0])
-	def port = convertHexToInt(parts[1])
-	return ip + ":" + port
+private byte[] reverseArray(byte[] array) {
+    int i = 0;
+    int j = array.length - 1;
+    byte tmp;
+    while (j > i) {
+        tmp = array[j];
+        array[j] = array[i];
+        array[i] = tmp;
+        j--;
+        i++;
+    }
+    return array
+}
+
+def parseDescriptionAsMap(description) {
+    (description - "read attr - ").split(",").inject([:]) { map, param ->
+        def nameAndValue = param.split(":")
+        map += [(nameAndValue[0].trim()):nameAndValue[1].trim()]
+    }
 }
