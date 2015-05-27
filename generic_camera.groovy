@@ -1,5 +1,7 @@
 /**
- *  Generic Camera Device v1.0.07102014
+ *  Generic Camera Device v1.1.05272015
+ * 
+ * Special thanks to @Dan999 for sharing the fix for removing the ":" from image name to fix android image display issues
  *
  *  Copyright 2014 patrick@patrickstuart.com
  *
@@ -187,7 +189,7 @@ map += [(nameAndValue[0].trim()):nameAndValue[1].trim()]
 }
 
 private getPictureName() {
-	def pictureUuid = java.util.UUID.randomUUID().toString().replaceAll('-', '')
+	def pictureUuid = java.util.UUID.randomUUID().toString().replaceAll('-', '').replaceAll(':', '')
 	return device.deviceNetworkId + "_$pictureUuid" + ".jpg"
 }
 
