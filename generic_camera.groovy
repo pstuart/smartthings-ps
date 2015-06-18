@@ -172,7 +172,8 @@ map += [(nameAndValue[0].trim()):nameAndValue[1].trim()]
 private getPictureName() {
 	def pictureUuid = java.util.UUID.randomUUID().toString().replaceAll('-', '')
     log.debug pictureUuid
-	return device.deviceNetworkId + "_$pictureUuid" + ".jpg"
+    def picName = device.deviceNetworkId.replaceAll(':', '') + "_$pictureUuid" + ".jpg"
+	return picName
 }
 
 private String convertIPtoHex(ipAddress) { 
