@@ -1,7 +1,5 @@
 /**
- *  Generic Camera Device v1.1.05272015
- * 
- * Special thanks to @Dan999 for sharing the fix for removing the ":" from image name to fix android image display issues
+ *  Generic Camera Device v1.0.07102014
  *
  *  Copyright 2014 patrick@patrickstuart.com
  *
@@ -38,7 +36,7 @@ metadata {
 	simulator {
     
 	}
-
+/*
 	tiles {
 		standardTile("camera", "device.image", width: 1, height: 1, canChangeIcon: false, inactiveLabel: true, canChangeBackground: true) {
 			state "default", label: "", action: "", icon: "st.camera.dropcam-centered", backgroundColor: "#FFFFFF"
@@ -49,79 +47,48 @@ metadata {
 		standardTile("take", "device.image", width: 1, height: 1, canChangeIcon: false, inactiveLabel: true, canChangeBackground: false) {
 			state "take", label: "Take", action: "Image Capture.take", icon: "st.camera.camera", backgroundColor: "#FFFFFF", nextState:"taking"
 			state "taking", label:'Taking', action: "", icon: "st.camera.take-photo", backgroundColor: "#53a7c0"
-			state "image", label: "Take", action: "Image Capture.take", icon: "st.camera.camera", backgroundColor: "#FFFFFF", nextState:"taking"
+			//state "image", label: "Take", action: "Image Capture.take", icon: "st.camera.camera", backgroundColor: "#FFFFFF", nextState:"taking"
 		}
-
+	standardTile("blank", "device.image", width: 1, height: 1, canChangeIcon: false, canChangeBackground: false, decoration: "flat") {
+            state "blank", label: "", action: "", icon: "", backgroundColor: "#FFFFFF"
+        }
 		main "camera"
-		details(["cameraDetails", "take", "error"])
+		details(["cameraDetails", "blank", "take"])
 	}
+    
+    */
+    tiles {
+        standardTile("take", "device.image", width: 1, height: 1, canChangeIcon: false, inactiveLabel: true, canChangeBackground: false) {
+            state "take", label: "Take", action: "Image Capture.take", icon: "st.camera.camera", backgroundColor: "#FFFFFF", nextState:"taking"
+            state "taking", label:'Taking', action: "", icon: "st.camera.take-photo", backgroundColor: "#53a7c0"
+            state "image", label: "Take", action: "Image Capture.take", icon: "st.camera.camera", backgroundColor: "#FFFFFF", nextState:"taking"
+        }
+
+        standardTile("refresh", "device.alarmStatus", inactiveLabel: false, decoration: "flat") {
+            state "refresh", action:"polling.poll", icon:"st.secondary.refresh"
+        }
+        standardTile("blank", "device.image", width: 1, height: 1, canChangeIcon: false, canChangeBackground: false, decoration: "flat") {
+            state "blank", label: "", action: "", icon: "", backgroundColor: "#FFFFFF"
+        }
+        carouselTile("cameraDetails", "device.image", width: 3, height: 2) { }
+        main "take"
+        details([ "take", "blank", "refresh", "cameraDetails"])
+    }
 }
 
 def parse(String description) {
     log.debug "Parsing '${description}'"
     def map = [:]
-def retResult = []
-def descMap = parseDescriptionAsMap(description)
-//Image
-if (descMap["bucket"] && descMap["key"]) {
-putImageInS3(descMap)
-}
-
-    //def map = stringToMap(description)
-	log.debug "Map '${map}'"
-    
-    def result = []
-	
-    if (map.bucket && map.key) { //got a s3 pointer
-    	putImageInS3(map)
-    }
-    
-    else if (map.headers && map.body) { //got device info response
-    	def headerString = new String(map.headers.decodeBase64())
-    	if (headerString.contains("404 Not Found")) {
-    		state.snapshot = "/snapshot.cgi"
-   		}
-
-    	if (map.body) {
-        def bodyString = new String(map.body.decodeBase64())
-        def body = new XmlSlurper().parseText(bodyString)
-        def productName = body?.productName?.text()
-    	if (productName) {
-            log.trace "Product Name: $productName"
-            state.snapshot = ""
-        }
-    }
-    }
-
-    result
-}
-
-
-def putImageInS3(map) {
-	def s3ObjectContent
-    try {
-	    def imageBytes = getS3Object(map.bucket, map.key + ".jpg")
-	    if(imageBytes)
-	    {
-    	s3ObjectContent = imageBytes.getObjectContent()
-    	def bytes = new ByteArrayInputStream(s3ObjectContent.bytes)
-    	storeImage(getPictureName(), bytes)
-    	}
-    }
-    
-    catch(Exception e) {
-    	log.error e
-    	}
-    finally {
-    	//Explicitly close the stream
-    	if (s3ObjectContent) { s3ObjectContent.close() }
-    }
+	def retResult = []
+	def descMap = parseDescriptionAsMap(description)
+	//Image
+	if (descMap["bucket"] && descMap["key"]) {
+		putImageInS3(descMap)
+	} 
 }
 
 // handle commands
 def take() {
-	
-	sendEvent(name: "hubactionMode", value: "s3");
 	def userpassascii = "${CameraUser}:${CameraPassword}"
 	def userpass = "Basic " + userpassascii.encodeAsBase64().toString()
     def host = CameraIP 
@@ -138,7 +105,7 @@ def take() {
     
     def headers = [:] 
     headers.put("HOST", "$host:$CameraPort")
-   	if (CameraAuth == "true") {
+   	if (CameraAuth) {
         headers.put("Authorization", userpass)
     }
     
@@ -164,21 +131,35 @@ def take() {
     	path: path,
     	headers: headers
         )
-        
-    if(device.currentValue("hubactionMode") == "s3") {
-		hubAction.options = [outputMsgToS3:true]
-		sendEvent(name: "hubactionMode", value: "local");
-	}
-	hubAction    
-	
-    //hubAction.options = [outputMsgToS3:true]
-    //log.debug hubAction
-    //hubAction
+        	
+    hubAction.options = [outputMsgToS3:true]
+    log.debug hubAction
+    hubAction
     }
     catch (Exception e) {
     	log.debug "Hit Exception $e on $hubAction"
     }
     
+}
+def putImageInS3(map) {
+	log.debug "firing s3"
+    def s3ObjectContent
+    try {
+        def imageBytes = getS3Object(map.bucket, map.key + ".jpg")
+        if(imageBytes)
+        {
+            s3ObjectContent = imageBytes.getObjectContent()
+            def bytes = new ByteArrayInputStream(s3ObjectContent.bytes)
+            storeImage(getPictureName(), bytes)
+        }
+    }
+    catch(Exception e) {
+        log.error e
+    }
+	finally {
+    //Explicitly close the stream
+		if (s3ObjectContent) { s3ObjectContent.close() }
+	}
 }
 
 def parseDescriptionAsMap(description) {
@@ -189,7 +170,8 @@ map += [(nameAndValue[0].trim()):nameAndValue[1].trim()]
 }
 
 private getPictureName() {
-	def pictureUuid = java.util.UUID.randomUUID().toString().replaceAll('-', '').replaceAll(':', '')
+	def pictureUuid = java.util.UUID.randomUUID().toString().replaceAll('-', '')
+    log.debug pictureUuid
 	return device.deviceNetworkId + "_$pictureUuid" + ".jpg"
 }
 
