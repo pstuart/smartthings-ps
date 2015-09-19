@@ -1,5 +1,5 @@
 /**
- *  Live Code HVAC Fac Run Away
+ *  Live Code HVAC Fan Run Away
  *
  *  Copyright 2015 Patrick Stuart
  *
@@ -40,6 +40,12 @@ preferences {
     }
 }
 
+mappings {
+	path("/html") {action: [GET: "html"]}
+    path("/updates") {action: [GET: "updates"]}
+    path("/:id/:command") {action: [GET: "deviceAction"]}
+}
+
 def installed() {
 	log.debug "Installed with settings: ${settings}"
 
@@ -57,6 +63,7 @@ def initialize() {
 	// start the hvac fan
     // start a timer
     // at end of timer, stop hvac fan
+    subscribe(app, startFan)
     startFan()
     log.debug "Fan Started"
 }
@@ -72,5 +79,73 @@ def stopFan(evt) {
     unschedule()
     tstats*.fanAuto()
     log.debug "fan stopped"
+    
+}
+
+def html() {
+	state.updates = []
+	render contentType: "text/html", data: """
+    <html>
+    <head>
+    ${js()}
+    </head>
+    <body>
+    <div id="wrapper">
+    <div id="header">
+    	Live Code Friday - HTML Tstat Fan Control
+    </div>
+    <div id="remote">
+    <div id="tstats">
+    ${sws()}
+    </div>
+    </div>
+    </div>
+    </body>
+    </html>
+    """
+}
+
+def sws() {
+	def markup = ""
+    tstats.each {
+    	markup = markup + """
+        	<div class="tstat" id="tstat_${it.id}">
+            	<div class="name">${it.displayName}</div>
+            	<div class="id">${it.id}</div>
+                <div class="status">${it.currentValue("thermostatFanMode")}</div>
+                <div class="actions"><a class="action" href="https://graph.api.smartthings.com/api/smartapps/installations/<fixthis>/${it.id}/toggle">Toggle</a></div>
+            </div>
+        """
+    }
+    
+    markup
+}
+
+
+def js() { """
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+<script type="text/javascript">
+	\$(document).ready(function() {
+    	//def url = "https://graph.api.smartthings.com/api/smartapps/installations/" + ${app.id} +
+    	alert("ready");
+    });
+</script>
+"""
+}
+
+def deviceAction() {
+	log.debug params.id
+    log.debug params.command
+    def sw = switches.find {it.id == params.id }
+    if (sw.currentValue("thermostatFanMode") == "on") {
+    sw.auto() 
+     render contentType: "text/html", data: """auto"""
+    }
+    else 
+    {
+    sw.on()
+    render contentType: "text/html", data: """on"""
+    }
+    
     
 }
