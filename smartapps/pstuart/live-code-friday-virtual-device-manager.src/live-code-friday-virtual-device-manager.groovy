@@ -32,9 +32,9 @@ definition(
 preferences {
 	page(name: "firstPage")
     page(name: "inputPage")
-    page(name: "switchPage")
-    page(name: "addSwitchPage")
-    page(name: "viewSwitchPage")
+    page(name: "devicePage")
+    page(name: "addDevicePage")
+    page(name: "viewDevicePage")
     page(name: "deletePage")
 }
 
@@ -42,85 +42,135 @@ def firstPage() {
 	dynamicPage(name: "firstPage", title: "Where to first?", install: true, uninstall: true) {
 		section("Main Menu") {
         	paragraph "Version 1.1"
-        	href(page: "inputPage", title: "Let's add Devices!")
+        	href(page: "inputPage", title: "Let's Add Devices!")
         	
         }
+        /*
         section("Later") {
         	paragraph "More to come..."
         }
+        */
         
    }
 }
 
 def inputPage() {
-	dynamicPage(name: "inputPage", title: "Every 'input' type") {
-		section("devices") {
-        	href(page: "switchPage", title: "Switches")
+	dynamicPage(name: "inputPage", title: "Choose What Device Type You Want To Add", nextPage:"firstPage") {
+		section("Device Types") {
+        	href(page: "devicePage", title: "Switches", params: [device: "Generic Switch"])
+            href(page: "devicePage", title: "Dimmers", params: [device: "Generic Dimmer"])
+            href(page: "devicePage", title: "Contact Sensor", params: [device: "Generic Contact"])
             
         }
         section("Later") {
         	paragraph "more devices coming soon"
         }
+        section("Navigation") {
+        	href(page: "firstPage", title: "Main Menu")
+        }
 	}
 }
 
-def switchPage() {
-	dynamicPage(name: "switchPage", title: "Switches") {
-		section("Switches") {
+def devicePage(params) {
+	dynamicPage(name: "devicePage", title: "Devices", nextPage:"inputPage") {
+    	// Loop childDevices based on type
+        // match up types
+	def device = params.device
+    log.debug "Hit Device Page with the selector device type $device"
+    def deviceTitle = device + "s"
+    if (device.endsWith('ch') || device.endsWith('s') || device.endsWith('x')) {
+    	deviceTitle = device + "es"
+    }
+    log.debug "Device Title is $deviceTitle"
+    
+		section("Installed ${deviceTitle}") {
         	 def childDevices = getChildDevices()
-             if (childDevices) {
+             
              	log.debug "The Child Devices are $childDevices"
+             if (childDevices) {
                 def devices = "Switches Installed:\r\nThis is a second line\r\n"
-             	childDevices.each {
-                	log.debug it.deviceNetworkId
+                log.debug "Inside childDevices if statement"
+                
+             	childDevices.findAll { it.typeName == device }
+                .each {
+                	log.debug "The child device id is $it.deviceNetworkId and the type is $it"
+                    def test = it.typeName
+                    log.debug "Testing $test"
                     //def tempDevice = getChildDevice(it)
                     //log.debug tempDevice
                     //devices = devices + "test\r\n"
-                	href(page: "viewSwitchPage", title: it.name, params: [dni: it.deviceNetworkId])
+                    
+                    switch(it.typeName) {
+                    	case "Generic Switch" : 
+                        	href(page: "viewDevicePage", title: it.name, params: [dni: it.deviceNetworkId])
+                            break
+                        case "Generic Dimmer" :
+                        	href(page: "viewDevicePage", title: it.name, params: [dni: it.deviceNetworkId])
+                            break
+                        case "Generic Contact" :
+                        	href(page: "viewDevicePage", title: it.name, params: [dni: it.deviceNetworkId])
+                            break
+                        default : break
+                        
+                        
+                    }
+                	
                 }
-                //paragraph devices
              } else {
-             paragraph "No Switches Exist"
+             paragraph "No Virtual Generic Devices are Installed"
              }
         }
         
-        section("Add Switch") {
+        section("Add A ${params.device}") { //${params.device}
         	// List Switches getChildDevices()
             
             // Add A Switch addChildDevice()
             // View A Switch / Delete that switch go to switch view
-            href(page: "addSwitchPage", title: "Add A Switch")
+            href(page: "addDevicePage", title: "New $device", params: [type: device])
+        }
+        
+        section("Navigation") {
+        	href(page: "firstPage", title: "Main Menu")
         }
 	}
 }
 
-def addSwitchPage() {
-	dynamicPage(name: "addSwitchPage", title: "Switches") {
-		section("devices") {
+def addDevicePage(params) {
+	dynamicPage(name: "addDevicePage", title: "New $params.type", nextPage:"devicePage") {
+		section("New $params.type Add Result") {
         	//add new virtual switch
-            def result = addChildSwitch()
-        	paragraph "Switch Added ${result}"
+            log.debug "Add Device Page hit with params $params"
+            def result = addChildSwitch(params.type)
+        	paragraph "$params.type Added ${result}"
             
-            href(page: "switchPage", title: "Switches")
+            href(page: "devicePage", title: "Devices")
+        }
+        
+        section("Navigation") {
+        	href(page: "firstPage", title: "Main Menu")
         }
 	}
 }
 
-def viewSwitchPage(params) {
-	dynamicPage(name: "addSwitchPage", title: "Switches") {
-    	section("switch") {
-        	paragraph "Switch View here $params"
-            log.debug params
+def viewDevicePage(params) {
+	dynamicPage(name: "viewDevicePage", title: "Switch", nextPage:"devicePage") {
+    	def viewSwitch = getChildDevice(params.dni)
+    	section("$viewSwitch.name") {
+        	paragraph "Switch Details \r\nName: $viewSwitch.name\r\nType: $viewSwitch.typeName\r\nNetwork ID: $viewSwitch.deviceNetworkId\r\nStates\r\nSwitch: ${viewSwitch.currentState('switch').value}\r\n" // Create info about switch / child device
+            log.debug viewSwitch.currentState('switch').value
             href(page: "deletePage", title: "Delete", params: [dni: params.dni])
-            //deleteChildDevice(it.deviceNetworkId)
+        }
+        
+        section("Navigation") {
+        	href(page: "firstPage", title: "Main Menu")
         }
     }
 }
 
 def deletePage(params) {
-	dynamicPage(name: "deletePage", title: "Delete") {
+	dynamicPage(name: "deletePage", title: "Delete", nextPage:"devicePage") {
     	section("switch") {
-        	paragraph "Deleted Swithc with DNI of $params.dni"
+        	paragraph "Deleted Switch with DNI of $params.dni"
             log.debug "Deleting $params.dni"
             //def delete = getChildDevices().findAll { it?.contains(params.dni) }
 			//log.debug delete
@@ -129,6 +179,10 @@ def deletePage(params) {
             deleteChildDevice(delete.deviceNetworkId)
             
             href(page: "switchPage", title: "Switches")
+        }
+        
+        section("Navigation") {
+        	href(page: "firstPage", title: "Main Menu")
         }
     }
 }
@@ -148,19 +202,27 @@ def updated() {
 
 def initialize() {
 	// TODO: subscribe to attributes, devices, locations, etc.
+    def switches = getChildDevices()
+    switches.each {
+    	if (!it.currentValue('switch') ) {
+        	it.off()
+        }
+    }
 }
 
 
-def addChildSwitch() {
+def addChildSwitch(params) {
 	//Get all devices installed as children
     def childDevices = getChildDevices()
     def counter = childDevices.size() + 1
     def dni = "pstuartSwitch_$counter" // TODO create random string /guid
-    def deviceName = "Generic Switch $counter"
+    def deviceName = "$params $counter"
     
     log.debug dni
-    def childDevice = addChildDevice("pstuart", "Generic Switch", dni, null, [name:deviceName])
+    log.debug params
+    def childDevice = addChildDevice("pstuart", params, dni, null, [name:deviceName])
     log.debug childDevice
+    childDevice.off()
     return childDevice
     //return dni
     
