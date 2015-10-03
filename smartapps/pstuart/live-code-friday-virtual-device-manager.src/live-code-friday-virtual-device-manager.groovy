@@ -26,7 +26,8 @@ definition(
     category: "My Apps",
     iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
     iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
-    iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png")
+    iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
+    singleInstance: true)
 
 
 preferences {
@@ -41,7 +42,7 @@ preferences {
 def firstPage() {
 	dynamicPage(name: "firstPage", title: "Where to first?", install: true, uninstall: true) {
 		section("Main Menu") {
-        	paragraph "Version 1.1"
+        	paragraph "Version 1.2"
         	href(page: "inputPage", title: "Let's Add Devices!")
         	
         }
@@ -78,7 +79,7 @@ def devicePage(params) {
 	def device = params.device
     log.debug "Hit Device Page with the selector device type $device"
     def deviceTitle = device + "s"
-    if (device.endsWith('ch') || device.endsWith('s') || device.endsWith('x')) {
+    if (device?.endsWith('ch') || device?.endsWith('s') || device?.endsWith('x')) {
     	deviceTitle = device + "es"
     }
     log.debug "Device Title is $deviceTitle"
@@ -99,6 +100,8 @@ def devicePage(params) {
                     //def tempDevice = getChildDevice(it)
                     //log.debug tempDevice
                     //devices = devices + "test\r\n"
+                    
+                    
                     
                     switch(it.typeName) {
                     	case "Generic Switch" : 
@@ -126,6 +129,7 @@ def devicePage(params) {
             
             // Add A Switch addChildDevice()
             // View A Switch / Delete that switch go to switch view
+            input("DeviceName", "text")
             href(page: "addDevicePage", title: "New $device", params: [type: device])
         }
         
@@ -139,8 +143,12 @@ def addDevicePage(params) {
 	dynamicPage(name: "addDevicePage", title: "New $params.type", nextPage:"devicePage") {
 		section("New $params.type Add Result") {
         	//add new virtual switch
-            log.debug "Add Device Page hit with params $params"
-            def result = addChildSwitch(params.type)
+            log.debug "Add Device Page hit with params $params and $settings.DeviceName"
+            def newDeviceName = params.type
+            if (settings.DeviceName) {
+            	newDeviceName = settings.DeviceName
+            }
+            def result = addChildDevice(params.type, newDeviceName)
         	paragraph "$params.type Added ${result}"
             
             href(page: "devicePage", title: "Devices")
@@ -211,20 +219,59 @@ def initialize() {
 }
 
 
-def addChildSwitch(params) {
+def addChildDevice(params, deviceName) {
 	//Get all devices installed as children
-    def childDevices = getChildDevices()
-    def counter = childDevices.size() + 1
-    def dni = "pstuartSwitch_$counter" // TODO create random string /guid
-    def deviceName = "$params $counter"
+    def childDevices = getChildDevices() //.findAll{ it -> it.type == params } //Find device of type params.type
+    //def collectDevices = childDevices.collect{ getChildDevice(it).type ?: 0}
+    //log.debug "The result of collectDevices is $collectDevices"
     
+    def gTypes = genericTypes()
+    log.debug gTypes
+    def subChildDevices = childDevices?.findAll { it -> it.typeName == params }
+    log.debug "The subset of child devices is $subChildDevices based on type $params"
+    def counter = subChildDevices?.size() + 1
+    log.debug "$subChildDevices and counter is $counter"
+    
+    /*
+    def counters = [:]
+    childDevices.each {
+    	def childDevice = getChildDevice(it)
+        log.debug "Child Device type is $childDevice.type"
+        gTypes.each {
+        	if (it == childDevice.type) {
+            	def counter = ["name" : params.type, "counter" : counter++ ]
+            }
+        }
+    } */
+    
+    
+    
+    
+                    
+    //def counter = childDevices.size() + 1 //TODO Fix counter for each type
+    def dni = "pstuartDevice_$counter" // TODO create random string /guid
+    def newDeviceName = "$params $counter"
+    if (deviceName != params) {
+    	newDeviceName = deviceName
+    }
+    log.debug newDeviceName
     log.debug dni
     log.debug params
-    def childDevice = addChildDevice("pstuart", params, dni, null, [name:deviceName])
+    log.trace "just about to add childe device"
+    def childDevice = addChildDevice("pstuart", params, dni, null, [name:newDeviceName])
     log.debug childDevice
     childDevice.off()
     return childDevice
     //return dni
     
     
+}
+
+def genericTypes() {
+	def gTypes = [
+    	"Generic Switch",
+        "Generic Contact",
+        "Generic Dimmer",
+    ]
+	return gTypes
 }
