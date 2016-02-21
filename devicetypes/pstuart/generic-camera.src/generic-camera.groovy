@@ -14,7 +14,7 @@
  *
  */
 metadata {
-	definition (name: "Generic Camera Device", namespace: "ps", author: "patrick@patrickstuart.com") {
+	definition (name: "Generic Camera", namespace: "pstuart", author: "patrick@patrickstuart.com") {
 		capability "Image Capture"
 		capability "Sensor"
 		capability "Actuator"
