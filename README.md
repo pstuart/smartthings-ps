@@ -16,7 +16,7 @@ click + New SmartDevice
 
 fill out just name, namespace and author and click create
 
-copy and paste my code from the github https://github.com/pstuart/smartthings/blob/master/generic_camera.groovy
+copy and paste the code 
 
 Click the save button
 
@@ -36,36 +36,3 @@ hub = your hub
 group = what folder do you want the "thing" in, none is the default.
 
 then click create
-
-you should then get a page that shows you the device info
-
-look for a preferences section with a (edit) link.
-
-Click the edit link, add the properties for the camera: (these are one of my camera's settings, replace with your values)
-
-Camera IP Address: 192.168.101.249
-
-Camera Port: 80
-
-Camera Path to Image: /SnapshotJPEG?Resolution=640x480&Quality=Clarity
-
-Does Camera require User Auth?: true
-
-Does Camera use a Post or Get, normally Get?: GET
-
-Camera User: username
-
-Camera Password: password
-
-
-click save.
-
-Go to your app and under things you should now see a new camera thing. Tap it.
-
-Tap the take button, should see a picture show up if everything worked.
-
-If not, go back into the IDE https://graph.api.smartthings.com/
-
-Go to the Logs section https://graph.api.smartthings.com/ide/logs
-
-go back to your app and device tap the take button again and paste in the console results for the camera.
