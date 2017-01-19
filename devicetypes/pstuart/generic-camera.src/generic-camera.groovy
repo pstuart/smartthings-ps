@@ -1,4 +1,5 @@
-/**
+/** 
+ *  NOTE THIS HAS BEEN KILLED BY A SECURITY FIX BY SMARTTTHINGS  IT IS OBSOLETE AND WILL NOT WORK ANYMORE
  *  Generic Camera Device v1.0.07102014
  *
  *  Copyright 2014 patrick@patrickstuart.com
@@ -12,7 +13,7 @@
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
  *
- */
+
 metadata {
 	definition (name: "Generic Camera", namespace: "pstuart", author: "patrick@patrickstuart.com") {
 		capability "Image Capture"
@@ -206,3 +207,4 @@ private getHostAddress() {
 	def port = convertHexToInt(parts[1])
 	return ip + ":" + port
 }
+ */
