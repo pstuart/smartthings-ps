@@ -13,6 +13,7 @@
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
  *
+*/
 
 metadata {
 	definition (name: "Generic Camera", namespace: "pstuart", author: "patrick@patrickstuart.com") {
@@ -207,4 +208,3 @@ private getHostAddress() {
 	def port = convertHexToInt(parts[1])
 	return ip + ":" + port
 }
- */
