@@ -1,8 +1,8 @@
 /** 
- *  NOTE THIS HAS BEEN KILLED BY A SECURITY FIX BY SMARTTTHINGS  IT IS OBSOLETE AND WILL NOT WORK ANYMORE
- *  Generic Camera Device v1.0.07102014
+ *  
+ *  Generic Camera Device v1.1.01302017
  *
- *  Copyright 2014 patrick@patrickstuart.com
+ *  Copyright 2017 patrick@patrickstuart.com
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
