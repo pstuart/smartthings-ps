@@ -84,8 +84,9 @@ def parse(String description) {
 	def retResult = []
 	def descMap = parseDescriptionAsMap(description)
 	//Image
-	if (descMap["tempImageKey"]) {
-		storeTemporaryImage(descMap["tempImageKey"], getPictureName())
+	def imageKey = descMap["tempImageKey"] ? descMap["tempImageKey"] : descMap["key"]
+	if (imageKey) {
+		storeTemporaryImage(imageKey, getPictureName())
 	} 
 }
 
